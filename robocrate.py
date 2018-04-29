@@ -1,10 +1,26 @@
+#!/usr/bin/env python2
+
+import os
 import argparse
+import shutil
 import config
 import scan
 
 
 def command_init():
-    config.init()
+    if not os.path.isdir(config.dir):
+        os.makedirs(config.dir)
+
+
+def command_clean():
+    if not os.path.isdir(config.dir):
+        return
+    for name in os.listdir(config.dir):
+        path = os.path.join(config.dir, name)
+        if os.path.isfile(path):
+            os.unlink(path)
+        else:
+            shutil.rmtree(path)
 
 
 def command_scan(source):
@@ -15,7 +31,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='command')
 
-    parser_init = subparsers.add_parser('init')
+    subparsers.add_parser('init')
+
+    subparsers.add_parser('clean')
 
     parser_scan = subparsers.add_parser('scan')
     parser_scan.add_argument('source')
