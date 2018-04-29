@@ -1,4 +1,3 @@
-import argparse
 import audiofile
 import thumbnail
 import os
@@ -9,12 +8,10 @@ import wave
 import numpy as np
 import uuid
 import struct
+import config
 
 
-DEFAULTDIR = os.path.expanduser("~/.robocrate")
-
-
-def make_file_thumb(source, destination):
+def _scan_file(source):
     """Extract representative audio thumbnails.
 
     source: a WAV or other music file readable by ffmpeg
@@ -42,13 +39,15 @@ def make_file_thumb(source, destination):
         frequency = 22050.0
     print "  analyze"
     clip_a, clip_b = thumbnail.get_pair(signal, frequency, size=30.0)
-    write_clip(clip_a, frequency, source, destination)
-    write_clip(clip_b, frequency, source, destination)
+    _write_clip(clip_a, frequency, source)
+    _write_clip(clip_b, frequency, source)
 
 
-def write_clip(signal, frequency, source, destination):
+def _write_clip(signal, frequency, source):
+    if not os.path.isdir(config.dir):
+        os.makedirs(config.dir)
     basename = str(uuid.uuid4())
-    basepath = os.path.join(destination, basename)
+    basepath = os.path.join(config.dir, basename)
     print "  write " + basename + ".m3u"
     with open(basepath + ".m3u", 'w') as fd:
         fd.write(os.path.abspath(source) + os.linesep)
@@ -64,11 +63,11 @@ def write_clip(signal, frequency, source, destination):
     wf.close()
 
 
-def make_dir_thumbs(source, destination):
+def _scan_dir(source):
     print "searching for music files in " + source
     worklist = []
     extensions = tuple(audiofile.list_extensions())
-    exclude = set([DEFAULTDIR])
+    exclude = set([config.dir])
     for root, dirs, files in os.walk(source):
         dirs[:] = [d for d in dirs if d not in exclude]
         for file in files:
@@ -77,26 +76,14 @@ def make_dir_thumbs(source, destination):
     for i, path in enumerate(worklist):
         print "[%d/%d]" % (i+1, len(worklist)),
         try:
-            make_file_thumb(path, destination)
+            _scan_file(path)
         except (IOError), e:
             print e
 
 
-def main(args):
-    if args.destination == DEFAULTDIR:
-        if not os.path.isdir(DEFAULTDIR):
-            os.makedirs(DEFAULTDIR)
-    if os.path.isdir(args.source):
-        make_dir_thumbs(args.source, args.destination)
-    elif os.path.isfile(args.source):
-        make_file_thumb(args.source, args.destination)
+def scan(source):
+    if os.path.isdir(source):
+        _scan_dir(source)
     else:
-        sys.exit("Error: source path is neither a file nor a directory")
+        _scan_file(source)
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("source", default=os.getcwd())
-    parser.add_argument("destination", nargs='?', default=DEFAULTDIR)
-    args = parser.parse_args()
-    main(args)
