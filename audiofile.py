@@ -2,21 +2,17 @@
 # Uses pysndfile if possible; falls back to ffmpeg if necessary.
 
 import pysndfile
-from collections import namedtuple
 import warnings
 import os
 import subprocess
 import tempfile
 
 
-AudioFile = namedtuple('AudioFile', 'data samplerate format')
-
-
 def _read_pysndfile(filename):
     f = pysndfile.PySndfile(filename)
     nframes = f.frames()
     data = f.read_frames(nframes)
-    return AudioFile(data, f.samplerate(), f.format())
+    return data, f.samplerate()
 
 
 def _popen(cmd):
@@ -49,7 +45,7 @@ def _read_ffmpeg(filename):
 _supported_extensions = None
 
 
-def list_extensions():
+def extensions():
     global _supported_extensions
     if _supported_extensions is None:
         with warnings.catch_warnings():
@@ -73,15 +69,3 @@ def read(filename):
             raise
         return f
 
-
-def write(filename, contents):
-    channels = contents.data.ndim
-    format = contents.format
-    f = pysndfile.PySndfile(
-        filename,
-        mode='w',
-        format=format,
-        channels=contents.data.ndim,
-        samplerate=contents.samplerate
-    )
-    f.write_frames(contents.data)
