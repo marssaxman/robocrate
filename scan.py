@@ -101,32 +101,49 @@ def _write_tags(basepath, source):
         val = _id3_val(getattr(id3, name))
         if not val:
             continue
-        tags[name] = val
+        tags[unicode(name)] = val
     with open(basepath + "_ID3.json", 'w') as fd:
         json.dump(tags, fd)
 
 
-def _id3_val(val):
-    if not val:
-        val = None
-    elif isinstance(val, str):
-        if 0 == len(val):
-            val = None
-    elif hasattr(val, '__iter__') and hasattr(val, '__len__'):
-        val = [_id3_val(x) for x in val]
-        if all(not v for v in val):
-            val = None
-    if hasattr(val, 'data'):
-        val = val.data
-    try:
-        json.dumps(val)
-    except TypeError:
-        val = str(val)
+def _id3_str(val):
+    if isinstance(val, unicode):
+        return val
+    if not isinstance(val, str):
+        return val
     # This appears to be a bug in eyeD3; it sometimes returns strings
     # with a leading \x03, indicating that the contents are UTF-8.
-    if isinstance(val, str) and len(val) > 0 and val[0] == '\x03':
-        val = val[1:].decode('utf-8')
-    return val
+    if len(val) > 0 and val[0] == '\x03':
+        val = bytes(val)[1:].decode('utf-8')
+    try:
+        return unicode(val)
+    except UnicodeDecodeError:
+        return None
+
+
+def _id3_val(val):
+    if not val:
+        return None
+    # Strings are iterable; don't try to treat them as lists.
+    if isinstance(val, basestring):
+        return _id3_str(val)
+    # If it's not a string, perhaps it's one of eyeD3's list-like objects.
+    try:
+        if len(val) > 0:
+            val = [_id3_val(x) for x in list(val)]
+            return val if any(v for v in val) else None
+    except TypeError:
+        pass
+    # There are data tag objects which can be coerced into giving up a string.
+    if hasattr(val, 'data'):
+        return _id3_str(val.data)
+    # Can we render the object into JSON as-is? If so, we'll use it.
+    # Otherwise, we'll try to coerce it into a string.
+    try:
+        json.dumps(val)
+        return val
+    except TypeError:
+        return _id3_str(str(val))
 
 
 def _scan_dir(source):
