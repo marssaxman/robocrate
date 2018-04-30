@@ -138,22 +138,3 @@ def extract(signal, sample_rate, window=1.0, step=0.5):
     stFeatures = np.concatenate(stFeatures, 1)
     return stFeatures
 
-
-def normalize(features):
-    X = np.array([])
-    for count, f in enumerate(features):
-        if f.shape[0] > 0:
-            if count == 0:
-                X = f
-            else:
-                X = np.vstack((X, f))
-            count += 1
-    MEAN = np.mean(X, axis=0)
-    STD = np.std(X, axis=0)
-    featuresNorm = []
-    for f in features:
-        ft = f.copy()
-        for nSamples in range(f.shape[0]):
-            ft[nSamples, :] = (ft[nSamples, :] - MEAN) / STD
-        featuresNorm.append(ft)
-    return (featuresNorm, MEAN, STD)
