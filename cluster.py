@@ -43,9 +43,12 @@ def _read_clips():
 
 def _get_id3_genre(hash):
     path = os.path.join(config.dir, hash + "_ID3.json")
-    with open(path, 'r') as fd:
-        tags = json.load(fd)
-        return tags.get('genre', None)
+    try:
+        with open(path, 'r') as fd:
+            tags = json.load(fd)
+            return tags.get('genre', None)
+    except IOError:
+        return None
 
 
 def cluster():
