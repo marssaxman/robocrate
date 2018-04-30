@@ -72,7 +72,7 @@ def harmonic(frame, sample_rate):
     return (HR, f0)
 
 
-def extract(signal, sample_rate, window, step):
+def extract(signal, sample_rate, window=1.0, step=0.5):
     # 0: zero-crossing rate
     # 1: energy
     # 2: energy entropy

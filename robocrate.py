@@ -5,6 +5,7 @@ import argparse
 import shutil
 import config
 from scan import scan
+from cluster import cluster
 
 
 def command_init():
@@ -27,6 +28,10 @@ def command_scan(source):
     scan(source)
 
 
+def command_cluster():
+    cluster()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', action='count')
@@ -35,8 +40,8 @@ if __name__ == '__main__':
     subparsers.add_parser('clean')
     parser_scan = subparsers.add_parser('scan')
     parser_scan.add_argument('source')
+    parser_cluster = subparsers.add_parser('cluster')
 
     kwargs = vars(parser.parse_args())
     config.verbose = kwargs.pop('verbose')
     globals()["command_" + kwargs.pop('command')](**kwargs)
-
