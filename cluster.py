@@ -1,7 +1,7 @@
 import os
 import os.path
 import scipy.io.wavfile
-import features
+import analysis
 import config
 import numpy as np
 import random
@@ -30,7 +30,7 @@ def _read_clips():
         if len(data) < 1024:
             print "file too short: %s is only %d bytes" % (name, len(data))
             continue
-        feats = features.extract(data, samplerate)
+        feats = analysis.extract(data, samplerate)
         # we generate 60-second thumbnails using 34 features, so our target shape
         # is always 34x59. We shouldn't be generating any smaller samples, but
         # there is currently a bug in the clip generator. On the other hand,

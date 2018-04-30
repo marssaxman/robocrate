@@ -2,13 +2,13 @@
 import numpy
 import scipy
 import scipy.signal
-import features
+import analysis
 
 
 def _self_similarity_matrix(featureVectors):
     from scipy.spatial import distance
     [nDims, nVectors] = featureVectors.shape
-    [featureVectors2, MEAN, STD] = features.normalize([featureVectors.T])
+    [featureVectors2, MEAN, STD] = analysis.normalize([featureVectors.T])
     featureVectors2 = featureVectors2[0].T
     return 1.0 - distance.squareform(distance.pdist(featureVectors2.T, 'cosine'))
 
@@ -17,7 +17,7 @@ def find_pair(signal, frequency, size=10.0, window=1.0, step=0.5):
     Limit1 = 0
     Limit2 = 1
     # Compute the features we will use to measure similarity.
-    vectors = features.extract(signal, frequency, window, step)
+    vectors = analysis.extract(signal, frequency, window, step)
     # Create the diagonal matrix which lets us find self-similar regions.
     similarity = _self_similarity_matrix(vectors)
 
