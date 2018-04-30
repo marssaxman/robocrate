@@ -31,7 +31,7 @@ def _read_clips():
             print "file too short: %s is only %d bytes" % (name, len(data))
             continue
         feats = analysis.extract(data, samplerate)
-        # we generate 60-second thumbnails using 34 features, so our target shape
+        # we generate 30-second summaries using 34 features, so our target shape
         # is always 34x59. We shouldn't be generating any smaller samples, but
         # there is currently a bug in the clip generator. On the other hand,
         # we're just going to average it all out anyway, so it doesn't matter.

@@ -1,5 +1,4 @@
 import audiofile
-import thumbnail
 import os
 import os.path
 import sys
@@ -12,6 +11,7 @@ import config
 import random
 import eyed3
 import json
+import summary
 
 
 def _sha1file(filename):
@@ -25,12 +25,13 @@ def _sha1file(filename):
 
 
 def _scan_file(source):
-    """Extract representative audio thumbnails.
+    """Extract representative audio summary segments and generate metadata.
 
-    source: a WAV or other music file readable by ffmpeg
+    source: an MP3, WAV, or other music file readable by ffmpeg
     destination: where we will write output
-    Output will be a pair of WAV files with arbitrary names, plus matching
-    M3U files, where each M3U contains a path to the original input file.
+    Output will be a group of files sharing the source file's SHA1 as a bae
+    name: a WAV summary, an M3U linking back to the original, and a JSON file
+    containing the ID3 metadata.
     """
     hash = _sha1file(source)
     signal, frequency = audiofile.read(source)
@@ -53,7 +54,7 @@ def _scan_file(source):
         frequency = 22050.0
     if config.verbose:
         print "  analyze"
-    left, right = thumbnail.get_pair(signal, frequency, size=30.0)
+    clip, _ = summary.generate(signal, frequency, duration=30.0)
     if not os.path.isdir(config.dir):
         os.makedirs(config.dir)
     basename = hash
@@ -63,9 +64,9 @@ def _scan_file(source):
     basepath = os.path.join(config.dir, basename)
     with open(basepath + ".m3u", 'w') as fd:
         fd.write(os.path.abspath(source) + os.linesep)
+    # Write the clip out as a WAV file.
     # Write the clips out as separate WAV files.
-    _write_wav16(basepath + "_L.wav", left, frequency)
-    _write_wav16(basepath + "_R.wav", right, frequency)
+    _write_wav16(basepath + ".wav", clip, frequency)
     # Copy interesting ID3 tags out to a JSON file.
     _write_tags(basepath, source)
 
