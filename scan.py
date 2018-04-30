@@ -84,7 +84,10 @@ def _write_wav16(path, signal, frequency):
 
 def _write_tags(basepath, source):
     eyed3.log.setLevel("ERROR")
-    id3 = eyed3.load(source).tag
+    id3file = eyed3.load(source)
+    if not id3file:
+        return
+    id3 = id3file.tag
     tagnames = [
         "artist", "album_artist", "album", "title", "track_num", "bpm",
         "play_count", "commercial_url", "copyright_url", "audio_file_url",
