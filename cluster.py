@@ -14,10 +14,7 @@ from collections import Counter
 def _calc_feats(path):
     samplerate, data = scipy.io.wavfile.read(path)
     featseries = analysis.extract(data, samplerate)
-    # We'll take the average of each feature to represent the track.
-    # Might be worth doubling the feature array, including variance too.
-    featvec = np.mean(featseries, axis=1)
-    return featvec
+    return featseries
 
 
 def _caption(track):
@@ -26,7 +23,6 @@ def _caption(track):
     if track.title:
         return track.title
     return os.path.splitext(os.path.basename(track.source))[0]
-
 
 
 def _read_clips(tracks):
@@ -68,11 +64,28 @@ def _top3desc(items):
     return ["%s (%.1f%%)" % (k, v*100.0) for k, v in top3pct]
 
 
+def _feats_to_matrix(feat_list):
+    featlin = list()
+    for f in feat_list:
+        if f.shape[1] < 59:
+            f = np.pad(f, ((0,0), (0, 59-f.shape[1])), 'constant')
+            assert (34,59) == f.shape
+        featlin.append(f.ravel())
+    # PCA expects (n_observations, n_dimensions) so we must put each track
+    # in rows, so that feats.shape[0] == len(feat_list).
+    feats = np.row_stack(featlin)
+    return feats
+
+
 def cluster():
     # Read the metadata describing the tracks in the library.
     tracks = library.tracks()
     # Read each audio summary clip and extract its feature series.
     feat_list = _read_clips(tracks)
+    feats = _feats_to_matrix(feat_list)
+
+    # Normalize the input data.
+    feats = sklearn.preprocessing.scale(feats, axis=0)
 
     # Build a classifier. We'll eventually do something clever like using the
     # elbow method, but for now we'll assume there should be roughly 200 tracks
@@ -82,8 +95,6 @@ def cluster():
     # Convert the list of feature vectors into a matrix and fit the model.
     # Perhaps we should normalize? PCA might also be valuable.
     print "fitting model"
-    feats = np.array(feat_list)
-    feats = sklearn.preprocessing.scale(feats, axis=0)
     model.fit(feats)
 
     # Make predictions: which tracks should go into which clusters?
