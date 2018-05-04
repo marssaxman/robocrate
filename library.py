@@ -17,9 +17,6 @@ class Track(object):
     def hash(self): return self._fields.get('hash')
 
     @property
-    def summary(self): return self._fields.get('summary')
-
-    @property
     def title(self): return self._fields.get('title')
 
     @property
@@ -33,6 +30,10 @@ class Track(object):
 
     @property
     def year(self): return self._fields.get('year')
+
+    @property
+    def summary(self):
+        return os.path.join(dir, self.hash + '.wav')
 
     def save(self):
         filename = self._fields['hash'] + ".json"
