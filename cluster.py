@@ -38,7 +38,7 @@ def _read_clips(tracks):
         try:
             feat_list[i] = np.load(featfile)
         except IOError, ValueError:
-            work_list.append(i, t)
+            work_list.append((i, t))
     # Compute feature vectors for unprocessed files.
     for i, (feat_idx, t) in enumerate(work_list):
         print "[%d/%d] %s" % (i+1, len(work_list), _caption(t))
