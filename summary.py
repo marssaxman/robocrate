@@ -26,19 +26,8 @@ def _similarity_matrix(features):
     return _norm0_1(matrix)
 
 
-def _protect_edges(similarity, duration, step_rate):
-    # Filter out columns which are close enough to the beginning or end that
-    # we wouldn't have enough room to clip our summary there without extending
-    # past the end of the signal. Additionally bias away from any hot spots
-    # in the margin within our summary width.
-    limit = int(duration / step_rate) / 2
-    xpos, ypos = np.mgrid[0:similarity.shape[0], 0:similarity.shape[1]]
-    mask = np.minimum(xpos, ypos)
-    mask = np.minimum(mask, np.rot90(mask, k=2))
-    return similarity * np.clip((mask - limit) / float(limit), 0, 1)
-
-
 def generate(signal, sample_rate, duration=10.0):
+    signal_time = len(signal) / float(sample_rate)
     # Find the most representative section of the source audio to use as its
     # summary. Return an audio clip with the specified duration.
     # Extract feature vector. Create self-similarity matrix.
@@ -46,18 +35,16 @@ def generate(signal, sample_rate, duration=10.0):
     features = _analyze(signal, sample_rate)
     similarity = _similarity_matrix(features)
     signal_steps = similarity.shape[0]
-    step_rate = (len(signal) / float(sample_rate)) / float(signal_steps)
-    similarity = _protect_edges(similarity, duration, step_rate)
+    step_rate = float(signal_steps) / signal_time
+    clip_steps = int(duration * step_rate)
     # Find the column with the highest median value; that'll be the center of
-    # our summary clip. Compute the start and end times, in seconds.
+    # our summary clip.
     medians = _norm0_1(np.median(similarity, axis=0))
-    center_step = medians.argmax()
-    clip_start = (center_step - duration/2.0) * step_rate
-    clip_stop = clip_start + duration
-    assert clip_start >= 0 and clip_stop <= signal_steps
+    limit_steps = clip_steps / 2
+    start_step = medians[limit_steps:-limit_steps].argmax()
+    stop_step = start_step + clip_steps
     # Extract the samples from the signal and return.
-    idx_start = int(clip_start * sample_rate)
-    idx_stop = int(clip_stop * sample_rate)
-    assert idx_start >= 0 and idx_stop <= len(signal)
-    return signal[idx_start:idx_stop]
+    start_idx = int(start_step / step_rate * sample_rate)
+    stop_idx = int(stop_step / step_rate * sample_rate)
+    return signal[start_idx:stop_idx]
 
