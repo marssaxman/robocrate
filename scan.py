@@ -7,7 +7,6 @@ import eyed3
 import numpy as np
 import struct
 import random
-import json
 
 import config
 import summary
@@ -53,11 +52,23 @@ def _gen_summary(source, dest):
         wf.close()
 
 
-def _gen_info(source, hash, summary, dest):
+def _scan_file(source):
+    """Extract representative audio summary segments and generate metadata.
+
+    source: an MP3, WAV, or other music file readable by ffmpeg
+    """
+    hash = mp3hash(source)
+    base_path = os.path.join(config.dir, hash)
+
+    # Generate the summary clip, if it doesn't already exist.
+    summary_path = base_path + '.wav'
+    if not os.path.isfile(summary_path):
+        _gen_summary(source, summary_path)
+
     info = {
         "source": os.path.abspath(source),
         "hash": hash,
-        "summary": os.path.abspath(summary),
+        "summary": os.path.abspath(summary_path),
     }
 
     # Add ID3 metadata, if available.
@@ -79,29 +90,7 @@ def _gen_info(source, hash, summary, dest):
                 info["year"] = release_date.year
     except UnicodeDecodeError:
         pass
-
-    # Write the file info as a JSON file in the robocrate directory.
-    with open(dest, 'w') as fp:
-        json.dump(info, fp)
-
-
-def _scan_file(source):
-    """Extract representative audio summary segments and generate metadata.
-
-    source: an MP3, WAV, or other music file readable by ffmpeg
-    """
-    hash = mp3hash(source)
-    base_path = os.path.join(config.dir, hash)
-
-    # Generate the summary clip, if it doesn't already exist.
-    summary_path = base_path + '.wav'
-    if not os.path.isfile(summary_path):
-        _gen_summary(source, summary_path)
-
-    # Generate the info file, if it doesn't already exist.
-    info_path = base_path + '.json'
-    if not os.path.isfile(info_path):
-        _gen_info(source, hash, summary_path, info_path)
+    library.Track.create(**info)
 
 
 def _search(source):
@@ -120,9 +109,8 @@ def _search(source):
 
 def _filter_known(worklist):
     # Remove all the files which are already present in our track library.
-    tracks = library.tracks()
     known = set()
-    for info in tracks:
+    for info in library.tracks():
         # We should have generated a summary clip for this track, and it should
         # still exist where we expect it.
         if not info.summary:

@@ -26,13 +26,22 @@ def _calc_feats(path):
     return featvec
 
 
+def _caption(track):
+    if track.title and track.artist:
+        return "\"%s\" by %s" % (track.title, track.artist)
+    if track.title:
+        return track.title
+    return os.path.splitext(os.path.basename(track.source))[0]
+
+
+
 def _read_clips(tracks):
     # Read the audio summary for each track in the library.
     # Extract features. Return a list of feature summary vectors, with each
     # index corresponding to one item in the track list.
     feat_list = [None] * len(tracks)
     for i, t in enumerate(tracks):
-        print "[%d/%d] %s" % (i+1, len(tracks), t.caption)
+        print "[%d/%d] %s" % (i+1, len(tracks), _caption(t))
         feat_list[i] = _calc_feats(t.summary)
     return feat_list
 
@@ -78,13 +87,15 @@ def cluster():
     # Print a report describing the crates we've found.
     for i, crate in enumerate(groups):
         print "Crate %d contains %d tracks" % (i, len(crate))
+
         # Which are the most-representative tracks in this cluster?
         distances = model.transform(feats)[:, i]
-        bestfits = np.argsort(distances)[::][:5]
+        bestfits = np.argsort(distances)[::]
+
         print "  Representative tracks:"
-        for j in bestfits:
+        for j in bestfits[:5]:
             info = tracks[j]
-            print "    %s" % info.caption
+            print "    %s" % _caption(info)
 
         # Which are the most frequently represented artists?
         print "  Most frequent artists:"

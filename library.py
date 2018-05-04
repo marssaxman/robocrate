@@ -4,8 +4,8 @@ import config
 
 
 class Track(object):
-    def __init__(self, fields):
-        self._fields = fields
+    def __init__(self, **kwargs):
+        self._fields = dict(kwargs)
 
     @property
     def source(self): return self._fields.get('source')
@@ -31,22 +31,17 @@ class Track(object):
     @property
     def year(self): return self._fields.get('year')
 
-    @property
-    def caption(self):
-        title = self._fields.get("title")
-        artist = self._fields.get("artist")
-        if title and artist:
-            return "\"%s\" by %s" % (title, artist)
-        if title:
-            return title
-        source = self._fields["source"]
-        return os.path.splitext(os.path.basename(source))[0]
-
-    def commit(self):
+    def save(self):
         filename = self._fields['hash'] + ".json"
         dest = os.path.join(config.dir, filename)
         with open(dest, 'w') as fp:
             json.dump(self._fields, fp)
+
+    @classmethod
+    def create(cls, **kwargs):
+        rec = cls(**kwargs)
+        rec.save()
+        return rec
 
 
 def tracks():
@@ -58,6 +53,6 @@ def tracks():
             continue
         with open(os.path.join(config.dir, name), 'r') as fd:
             fields = json.load(fd)
-            table.append(Track(fields))
+            table.append(Track(**fields))
     return table
 
