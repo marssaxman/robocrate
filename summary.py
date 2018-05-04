@@ -59,5 +59,5 @@ def generate(signal, sample_rate, duration=10.0):
     idx_start = int(clip_start * sample_rate)
     idx_stop = int(clip_stop * sample_rate)
     assert idx_start >= 0 and idx_stop <= len(signal)
-    return signal[idx_start:idx_stop], sample_rate
+    return signal[idx_start:idx_stop]
 
