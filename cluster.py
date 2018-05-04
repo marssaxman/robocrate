@@ -34,10 +34,23 @@ def _read_clips(tracks):
     # Extract features. Return a list of feature summary vectors, with each
     # index corresponding to one item in the track list.
     feat_list = [None] * len(tracks)
+    work_list = []
     for i, t in enumerate(tracks):
-        print "[%d/%d] %s" % (i+1, len(tracks), _caption(t))
+        # Try to load a saved npy array file containing the feature vector.
+        path = t.summary
+        featfile = os.path.splitext(path)[0] + '.npy'
         try:
-            feat_list[i] = _calc_feats(t.summary)
+            feat_list[i] = np.load(featfile)
+        except IOError, ValueError:
+            work_list.append(i, t)
+    # Compute feature vectors for unprocessed files.
+    for i, (feat_idx, t) in enumerate(work_list):
+        print "[%d/%d] %s" % (i+1, len(work_list), _caption(t))
+        try:
+            featvec = _calc_feats(t.summary)
+            featfile = os.path.splitext(t.summary)[0] + '.npy'
+            np.save(featfile, featvec)
+            feat_list[feat_idx] = featvec
         except KeyboardInterrupt:
             sys.exit(0)
     return feat_list
