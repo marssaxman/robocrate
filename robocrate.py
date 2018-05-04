@@ -1,27 +1,18 @@
 #!/usr/bin/env python2
 
-import os
 import argparse
-import shutil
 import config
 from scan import scan
 from cluster import cluster
+import library
 
 
 def command_init():
-    if not os.path.isdir(config.dir):
-        os.makedirs(config.dir)
+    library.init()
 
 
 def command_clean():
-    if not os.path.isdir(config.dir):
-        return
-    for name in os.listdir(config.dir):
-        path = os.path.join(config.dir, name)
-        if os.path.isfile(path):
-            os.unlink(path)
-        else:
-            shutil.rmtree(path)
+    library.clean()
 
 
 def command_scan(source):

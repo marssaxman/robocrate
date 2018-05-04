@@ -1,4 +1,5 @@
 import os, os.path
+import shutil
 import json
 import config
 
@@ -55,4 +56,20 @@ def tracks():
             fields = json.load(fd)
             table.append(Track(**fields))
     return table
+
+
+def clean():
+    if not os.path.isdir(config.dir):
+        return
+    for name in os.listdir(config.dir):
+        path = os.path.join(config.dir, name)
+        if os.path.isfile(path):
+            os.unlink(path)
+        else:
+            shutil.rmtree(path)
+
+
+def init():
+    if not os.path.isdir(config.dir):
+        os.makedirs(config.dir)
 

@@ -1,20 +1,14 @@
 import os
 import os.path
+import sys
 import scipy.io.wavfile
 import analysis
-import config
 import numpy as np
 import random
 import sklearn.cluster
 import sklearn.preprocessing
-import json
 import library
 from collections import Counter
-
-
-def log(msg):
-    if config.verbose:
-        print msg
 
 
 def _calc_feats(path):
@@ -42,7 +36,10 @@ def _read_clips(tracks):
     feat_list = [None] * len(tracks)
     for i, t in enumerate(tracks):
         print "[%d/%d] %s" % (i+1, len(tracks), _caption(t))
-        feat_list[i] = _calc_feats(t.summary)
+        try:
+            feat_list[i] = _calc_feats(t.summary)
+        except KeyboardInterrupt:
+            sys.exit(0)
     return feat_list
 
 
@@ -71,13 +68,13 @@ def cluster():
     model = sklearn.cluster.KMeans(n_clusters=n_clusters)
     # Convert the list of feature vectors into a matrix and fit the model.
     # Perhaps we should normalize? PCA might also be valuable.
-    log("fitting model")
+    print "fitting model"
     feats = np.array(feat_list)
     feats = sklearn.preprocessing.scale(feats, axis=0)
     model.fit(feats)
 
     # Make predictions: which tracks should go into which clusters?
-    log("generating predictions")
+    print "generating predictions"
     labels = model.predict(feats)
     # Sort the tracks into groups, corresponding to each generated label.
     groups = [list() for i in range(n_clusters)]
