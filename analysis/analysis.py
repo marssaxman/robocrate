@@ -35,43 +35,6 @@ def energy_entropy(frame, numOfShortBlocks=10):
     return Entropy
 
 
-def harmonic(frame, sample_rate):
-    M = np.round(0.016 * sample_rate) - 1
-    R = np.correlate(frame, frame, mode='full')
-    g = R[len(frame)-1]
-    R = R[len(frame):-1]
-    # estimate m0 (as the first zero crossing of R)
-    [a, ] = np.nonzero(np.diff(np.sign(R)))
-    if len(a) == 0:
-        m0 = len(R)-1
-    else:
-        m0 = a[0]
-    if M > len(R):
-        M = len(R) - 1
-    Gamma = np.zeros((M), dtype=np.float64)
-    CSum = np.cumsum(frame ** 2)
-    Gamma[m0:M] = R[m0:M] / (np.sqrt((g * CSum[M:m0:-1])) + _eps)
-    ZCR = zcr(Gamma)
-    if ZCR > 0.15:
-        HR = 0.0
-        f0 = 0.0
-    else:
-        if len(Gamma) == 0:
-            HR = 1.0
-            blag = 0.0
-            Gamma = np.zeros((M), dtype=np.float64)
-        else:
-            HR = np.max(Gamma)
-            blag = np.argmax(Gamma)
-        # Get fundamental frequency:
-        f0 = sample_rate / (blag + _eps)
-        if f0 > 5000:
-            f0 = 0.0
-        if HR < 0.1:
-            f0 = 0.0
-    return (HR, f0)
-
-
 def extract(signal, sample_rate, window=1.0, step=0.5):
     # 0: zero-crossing rate
     # 1: energy
@@ -87,7 +50,6 @@ def extract(signal, sample_rate, window=1.0, step=0.5):
     Step = int(step * sample_rate)
     # Signal normalization
     signal = np.double(signal)
-    signal = signal / (2.0 ** 15)
     DC = signal.mean()
     MAX = (np.abs(signal)).max()
     signal = (signal - DC) / (MAX + 0.0000000001)
@@ -99,11 +61,10 @@ def extract(signal, sample_rate, window=1.0, step=0.5):
     [fbank, freqs] = mfcc.init(sample_rate, nFFT)
     nChroma, nFreqsPerChroma = chroma.init(nFFT, sample_rate)
     numOfTimeSpectralFeatures = 8
-    numOfHarmonicFeatures = 0
     nceps = 13
     numOfChromaFeatures = 13
     totalNumOfFeatures = numOfTimeSpectralFeatures + \
-        nceps + numOfHarmonicFeatures + numOfChromaFeatures
+        nceps + numOfChromaFeatures
     stFeatures = []
     # for each short-term window until the end of signal
     while (curPos + Win - 1 < N):
