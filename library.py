@@ -1,7 +1,9 @@
 import os, os.path
 import shutil
 import json
-import config
+
+
+dir = os.path.expanduser("~/.robocrate")
 
 
 class Track(object):
@@ -34,7 +36,7 @@ class Track(object):
 
     def save(self):
         filename = self._fields['hash'] + ".json"
-        dest = os.path.join(config.dir, filename)
+        dest = os.path.join(dir, filename)
         with open(dest, 'w') as fp:
             json.dump(self._fields, fp)
 
@@ -49,20 +51,20 @@ def tracks():
     # Load all the JSON files in the cache dir. Each one describes one track.
     # Return a list of dicts containing the library info.
     table = list()
-    for name in os.listdir(config.dir):
+    for name in os.listdir(dir):
         if not name.endswith(".json"):
             continue
-        with open(os.path.join(config.dir, name), 'r') as fd:
+        with open(os.path.join(dir, name), 'r') as fd:
             fields = json.load(fd)
             table.append(Track(**fields))
     return table
 
 
 def clean():
-    if not os.path.isdir(config.dir):
+    if not os.path.isdir(dir):
         return
-    for name in os.listdir(config.dir):
-        path = os.path.join(config.dir, name)
+    for name in os.listdir(dir):
+        path = os.path.join(dir, name)
         if os.path.isfile(path):
             os.unlink(path)
         else:
@@ -70,6 +72,6 @@ def clean():
 
 
 def init():
-    if not os.path.isdir(config.dir):
-        os.makedirs(config.dir)
+    if not os.path.isdir(dir):
+        os.makedirs(dir)
 

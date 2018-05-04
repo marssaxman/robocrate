@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import argparse
-import config
 from scan import scan
 from cluster import cluster
 import library
@@ -25,7 +24,6 @@ def command_cluster():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--verbose', '-v', action='count')
     subparsers = parser.add_subparsers(dest='command')
     subparsers.add_parser('init')
     subparsers.add_parser('clean')
@@ -34,5 +32,4 @@ if __name__ == '__main__':
     parser_cluster = subparsers.add_parser('cluster')
 
     kwargs = vars(parser.parse_args())
-    config.verbose = kwargs.pop('verbose')
     globals()["command_" + kwargs.pop('command')](**kwargs)

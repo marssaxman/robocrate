@@ -8,24 +8,18 @@ import numpy as np
 import struct
 import random
 
-import config
 import summary
 import library
-
-
-def log(msg):
-    if config.verbose:
-        print msg
 
 
 def _normalize(signal, samplerate):
     # Mix down to a single mono channel.
     if hasattr(signal, 'ndim') and signal.ndim > 1:
-        log("  mix to mono")
+        print "  mix to mono"
         signal = signal.mean(axis=1).astype(np.float)
     # Resample down to 22050 Hz.
     if samplerate > 22050.0:
-        log("  downsample to 22050 Hz")
+        print "  downsample to 22050 Hz"
         signal = resample(signal, 22050.0 / samplerate, 'sinc_fastest')
         samplerate = 22050.0
     return signal, samplerate
@@ -37,10 +31,10 @@ def _gen_summary(source, dest):
     # Normalize to mono 22k for consistent analysis.
     signal, samplerate = _normalize(signal, samplerate)
     # Find the most representative 30 seconds to use as a summary clip.
-    log("  analyze")
+    print "  analyze"
     clip = summary.generate(signal, samplerate, duration=30.0)
     # Write the summary as a 16-bit WAV.
-    log("  write summary")
+    print "  write summary"
     wf = wave.open(dest, 'wb')
     if wf:
         wf.setnchannels(1)
@@ -58,7 +52,7 @@ def _scan_file(source):
     source: an MP3, WAV, or other music file readable by ffmpeg
     """
     hash = mp3hash(source)
-    base_path = os.path.join(config.dir, hash)
+    base_path = os.path.join(library.dir, hash)
 
     # Generate the summary clip, if it doesn't already exist.
     summary_path = base_path + '.wav'
@@ -94,10 +88,10 @@ def _scan_file(source):
 
 
 def _search(source):
-    log("searching for music files in " + source)
+    print "searching for music files in " + source
     worklist = []
     extensions = tuple(audiofile.extensions())
-    exclude = set([config.dir])
+    exclude = set([library.dir])
     for root, dirs, files in os.walk(source):
         dirs[:] = [d for d in dirs if d not in exclude]
         for file in files:
@@ -132,10 +126,10 @@ def scan(source):
         basedir = os.getcwd()
         worklist = [source]
     random.shuffle(worklist)
-    log("skipping known files")
+    print "skipping known files"
     worklist = _filter_known(worklist)
-    if not os.path.isdir(config.dir):
-        os.makedirs(config.dir)
+    if not os.path.isdir(library.dir):
+        os.makedirs(library.dir)
     for i, path in enumerate(worklist):
         relpath = os.path.relpath(path, basedir)
         printpath = relpath if len(relpath) < len(path) else path
