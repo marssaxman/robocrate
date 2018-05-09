@@ -12,6 +12,7 @@ from samplerate import resample
 import argparse
 import wave
 import struct
+from analysis import mfcc, spectral
 
 import matplotlib
 matplotlib.use('Agg')
@@ -84,7 +85,7 @@ def calc_clips(track, plot=False):
 
     if plot:
         # Plot this stuff out so we can see how we're doing.
-        fig = plt.figure(1, figsize=(1024/96,1280/96), dpi=96)
+        fig = plt.figure(1, figsize=(1024/96, 1280/96), dpi=96)
         gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, 12], hspace=0.1)
         plt.set_cmap('hot')
         axMatrix = plt.subplot(gs[2])
@@ -102,7 +103,7 @@ def calc_clips(track, plot=False):
         axScore.text(best_B, 0, "B")
 
         axStart.plot(startscore)
-        axStart.set_ylim([0,1])
+        axStart.set_ylim([0, 1])
         axStart.get_xaxis().set_visible(False)
         axStart.axvline(best_A)
         axStart.text(best_A, 0, "A")
@@ -121,8 +122,8 @@ def get_clips(t):
     try:
         feats_A = np.load(_path(t, "_A.npy"))
         feats_B = np.load(_path(t, "_B.npy"))
-        clip_A = audiofile.read(_path(t, "_A.wav"))
-        clip_B = audiofile.read(_path(t, "_B.wav"))
+        clip_A, sr_A = audiofile.read(_path(t, "_A.wav"))
+        clip_B, sr_A = audiofile.read(_path(t, "_B.wav"))
     except:
         (clip_A, feats_A), (clip_B, feats_B) = calc_clips(t)
         writewav(_path(t, "_A.wav"), clip_A)
@@ -154,32 +155,35 @@ def statify_feats(feats):
 
 
 def plot_features(track, feats_A, feats_B):
-    fig = plt.figure(1, figsize=(1024/96,1280/96), dpi=96)
+    fig = plt.figure(1, figsize=(1024/96, 1280/96), dpi=96)
     plt.set_cmap('hot')
     gs = gridspec.GridSpec(2, 2, height_ratios=[1, 1], hspace=0.1,
-        width_ratios=[12, 1], wspace=0.1)
-    axA = plt.subplot(gs[0,0])
+                           width_ratios=[12, 1], wspace=0.1)
+    axA = plt.subplot(gs[0, 0])
     axA.matshow(np.clip(feats_A.T, -3.0, 3.0), vmin=-3.0, vmax=3.0)
-    axA.set_xlim(0,feats_A.shape[0])
+    axA.set_xlim(0, feats_A.shape[0])
     axA.set_ylim(feats_A.shape[1], 0)
     axA.autoscale(False)
 
-    axAstat = plt.subplot(gs[0,1], sharey=axA)
+    axAstat = plt.subplot(gs[0, 1], sharey=axA)
     axAstat.matshow(statify_feats(feats_A).T, vmin=-3.0, vmax=3.0)
 
-    axB = plt.subplot(gs[1,0], sharex=axA)
+    axB = plt.subplot(gs[1, 0], sharex=axA)
     axB.matshow(np.clip(feats_B.T, -3.0, 3.0), vmin=-3.0, vmax=3.0)
-    axB.set_xlim(0,feats_B.shape[0])
+    axB.set_xlim(0, feats_B.shape[0])
     axB.set_ylim(feats_B.shape[1], 0)
     axB.autoscale(False)
 
-    axBstat = plt.subplot(gs[1,1], sharey=axB)
+    axBstat = plt.subplot(gs[1, 1], sharey=axB)
     axBstat.matshow(statify_feats(feats_B).T, vmin=-3.0, vmax=3.0)
 
     plt.savefig(_path(track, '_feats.png'), dpi=96, bbox_inches='tight')
 
 
 def metric_strength(feats_A, feats_B, metric):
+    # We have compared pairs of clips from an array of tracks. Columns and rows
+    # share the same order. We expect that the distance between clips from the
+    # same track will be substantially smaller than distances to other tracks.
     # How well does this metric predict that paired clips from the same track
     # should be related to one another?
     Y = scipy.spatial.distance.cdist(feats_A, feats_B, metric)
@@ -191,20 +195,55 @@ def metric_strength(feats_A, feats_B, metric):
 
 def rank_metrics(feats_A, feats_B):
     metrics = ['canberra', 'braycurtis', 'cityblock', 'euclidean',
-        'correlation', 'cosine', 'sqeuclidean', 'seuclidean', 'chebyshev']
+               'correlation', 'cosine', 'sqeuclidean', 'seuclidean', 'chebyshev']
     scores = [(metric_strength(feats_A, feats_B, m), m) for m in metrics]
-    return sorted(scores, key=lambda x:x[0], reverse=True)
+    return sorted(scores, key=lambda x: x[0], reverse=True)
+
+
+def altfeats(clip):
+    def hamming(N):
+        # improved hamming window: original implementation used 0.54, 0.46
+        i = np.arange(N).astype(np.float)
+        return 0.53836 - (0.46164 * np.cos(np.pi * 2.0 * i / (N-1)))
+
+    def zcr(frame):
+        count = len(frame)
+        count_zeros = np.sum(np.abs(np.diff(np.sign(frame)))) / 2
+        return (np.float64(count_zeros) / np.float64(count-1.0))
+
+    def energy(frame):
+        return np.sum(frame ** 2) / np.float64(len(frame))
+
+    window = hamming(2048)
+    [fbank, freqs] = mfcc.init(22050, 1025)
+    clipfeats = list()
+    s_prev = np.zeros(1025)
+    for i in xrange(0, len(clip)-2047, 2048):
+        frame = clip[i:i+2048] * window
+        s = np.abs(np.fft.rfft(frame))
+        s /= len(s)
+        mfccs = mfcc.filter(s, fbank, 13)
+        framefeats = mfccs
+        [centroid, spread] = spectral.centroid_and_spread(s, 22050)
+        entropy = spectral.entropy(s)
+        flux = spectral.flux(s, s_prev)
+        s_prev = s
+        rolloff = spectral.rolloff(s, 0.90)
+        spectrals = [centroid, spread, entropy, flux, rolloff]
+        framefeats = np.concatenate(([zcr(s), energy(s)], spectrals, mfccs))
+        clipfeats.append(framefeats)
+    return np.array(clipfeats)
 
 
 def plot_comparisons(clips):
-    fig = plt.figure(1, figsize=(1024/96,1024/96), dpi=96)
+    fig = plt.figure(1, figsize=(1024/96, 1024/96), dpi=96)
     plt.set_cmap('hot')
     gs = gridspec.GridSpec(2, 2, height_ratios=[1, 1], hspace=0.1,
-        width_ratios=[1, 1], wspace=0.1)
-    grids = [gs[0,0], gs[0,1], gs[1,0], gs[1,1]]
+                           width_ratios=[1, 1], wspace=0.1)
+    grids = [gs[0, 0], gs[0, 1], gs[1, 0], gs[1, 1]]
 
-    all_A = np.array([statify_feats(f).ravel() for _,_,f,_,_ in clips])
-    all_B = np.array([statify_feats(f).ravel() for _,_,_,_,f in clips])
+    all_A = np.array([statify_feats(f).ravel() for _, _, f, _, _ in clips])
+    all_B = np.array([statify_feats(f).ravel() for _, _, _, _, f in clips])
 
     print "Comparison metric scores:"
     metric_scores = rank_metrics(all_A, all_B)
@@ -232,7 +271,7 @@ def run(seed, n_tracks):
     feats = list()
     for i, t in enumerate(subset):
         caption = _caption(t)
-        print "  [%d/%d] %s" %(1+i, len(subset), caption)
+        print "  [%d/%d] %s" % (1+i, len(subset), caption)
         try:
             (clip_A, feats_A), (clip_B, feats_B) = get_clips(t)
             clips.append((t, clip_A, feats_A, clip_B, feats_B))
@@ -245,9 +284,7 @@ def run(seed, n_tracks):
     # normalize: center each feature on its mean, scaled to its std
     allmeans = np.mean(allfeats, axis=0)
     allstds = np.std(allfeats, axis=0)
-    allstats = np.vstack((allmeans, allstds))
 
-    #plot_comparisons(clips)
     for i, (t, clip_A, feats_A, clip_B, feats_B) in enumerate(clips):
         norm_A = (feats_A - allmeans) / allstds
         norm_B = (feats_B - allmeans) / allstds
@@ -255,11 +292,9 @@ def run(seed, n_tracks):
     plot_comparisons(clips)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=1234)
     parser.add_argument('--n_tracks', type=int, default=32)
     kwargs = vars(parser.parse_args())
     run(**kwargs)
-
-
