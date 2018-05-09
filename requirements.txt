@@ -4,4 +4,6 @@ samplerate==0.1
 pysndfile==1.1
 eyed3==0.8.4
 mp3hash==0.1
-
+enum34
+libmagic==1.0
+sklearn==0.19
