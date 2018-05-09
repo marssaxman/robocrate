@@ -9,7 +9,8 @@ import tempfile
 
 
 def _read_pysndfile(filename):
-    f = pysndfile.PySndfile(filename)
+    # PySndfile can't handle unicode filenames
+    f = pysndfile.PySndfile(filename.encode('utf-8'))
     nframes = f.frames()
     data = f.read_frames(nframes)
     return data, f.samplerate()
