@@ -40,8 +40,8 @@ def _gen_summary(source, dest):
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(int(samplerate))
-        for s in (clip * np.iinfo(np.int16).max).astype(np.int16):
-            wf.writeframesraw(struct.pack('<h', s))
+        clip_bytes = (clip * np.iinfo(np.int16).max).astype('<i2').tobytes()
+        wf.writeframesraw(clip_bytes)
         wf.writeframes('')
         wf.close()
 
