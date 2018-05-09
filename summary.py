@@ -34,14 +34,15 @@ def generate(signal, sample_rate, duration=10.0):
     # Filter for desirable characteristics. Identify hot spot.
     features = _analyze(signal, sample_rate)
     similarity = _similarity_matrix(features)
-    signal_steps = similarity.shape[0]
-    step_rate = float(signal_steps) / signal_time
+    step_rate = float(similarity.shape[0]) / signal_time
     clip_steps = int(duration * step_rate)
-    # Find the column with the highest median value; that'll be the center of
-    # our summary clip.
-    medians = _norm0_1(np.median(similarity, axis=0))
-    limit_steps = clip_steps / 2
-    start_step = medians[limit_steps:-limit_steps].argmax()
+    # Score each column by taking the median of all row values.
+    score = _norm0_1(np.median(similarity, axis=0))
+    # Compute the start time with the highest average score across the window.
+    starts = np.zeros(len(score)-clip_steps)
+    for i in range(len(starts)):
+        starts[i] = np.mean(score[i:i+clip_steps])
+    start_step = starts.argmax()
     stop_step = start_step + clip_steps
     # Extract the samples from the signal and return.
     start_idx = int(start_step / step_rate * sample_rate)
