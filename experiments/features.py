@@ -9,6 +9,13 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 
+# interesting research on feature weighting:
+# http://journals.sagepub.com/doi/pdf/10.1177/1029864916655596
+
+# some strategies for feature selection:
+# https://www.researchgate.net/publication/308483875_A_Study_on_Feature_Selection_and_Classification_Techniques_of_Indian_Music
+
+
 def _caption(track):
     if track.title and track.artist:
         return "%s - %s" % (track.artist, track.title)

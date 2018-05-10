@@ -163,6 +163,8 @@ def run(seed, n_tracks, experiment):
         from experiments.clusters import run
     elif experiment == 'features':
         from experiments.features import run
+    elif experiment == 'dendrogram':
+        from experiments.dendrogram import run
     run(clips)
 
 
@@ -171,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=1234)
     parser.add_argument('--n_tracks', type=int, default=128)
     parser.add_argument('experiment',
-        choices=['similarity', 'clusters', 'features'])
+        choices=['similarity', 'clusters', 'features', 'dendrogram'])
     kwargs = vars(parser.parse_args())
     try:
         run(**kwargs)
