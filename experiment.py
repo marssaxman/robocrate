@@ -46,6 +46,7 @@ def calc_clips(track, plot=False):
         signal = resample(signal, 22050.0 / samplerate, 'sinc_fastest')
         samplerate = 22050.0
     # Normalize to -1..1
+    signal = signal.astype(np.float)
     signal -= np.mean(signal)
     signal /= np.max(np.abs(signal))
     # Extract some features and normalize them around their means.
@@ -168,7 +169,7 @@ def run(seed, n_tracks, experiment):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=1234)
-    parser.add_argument('--n_tracks', type=int, default=32)
+    parser.add_argument('--n_tracks', type=int, default=128)
     parser.add_argument('experiment',
         choices=['similarity', 'clusters', 'features'])
     kwargs = vars(parser.parse_args())
