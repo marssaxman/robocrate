@@ -103,3 +103,5 @@ ENV/
 # temporary files generated for experiments
 /science-cache
 /*.png
+/*.svg
+
