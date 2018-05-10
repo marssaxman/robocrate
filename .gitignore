@@ -99,3 +99,7 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# temporary files generated for experiments
+/science-cache
+/*.png
