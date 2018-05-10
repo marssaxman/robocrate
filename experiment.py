@@ -113,21 +113,6 @@ def calc_clips(track, plot=False):
     return ((clip_A, feats_A), (clip_B, feats_B))
 
 
-def get_clips(t):
-    try:
-        feats_A = np.load(_cache(t, "_A.npy"))
-        feats_B = np.load(_cache(t, "_B.npy"))
-        clip_A, sr_A = audiofile.read(_cache(t, "_A.wav"))
-        clip_B, sr_A = audiofile.read(_cache(t, "_B.wav"))
-    except:
-        (clip_A, feats_A), (clip_B, feats_B) = calc_clips(t)
-        writewav(_cache(t, "_A.wav"), clip_A)
-        writewav(_cache(t, "_B.wav"), clip_B)
-        np.save(_cache(t, "_A.npy"), feats_A)
-        np.save(_cache(t, "_B.npy"), feats_B)
-    return (clip_A, feats_A), (clip_B, feats_B)
-
-
 def writewav(path, clip, samplerate=22050):
     wf = wave.open(path, 'wb')
     if wf:
@@ -140,21 +125,37 @@ def writewav(path, clip, samplerate=22050):
         wf.close()
 
 
+def read_tracks(subset):
+    clips = list()
+    todo = list()
+    for t in subset:
+        try:
+            feats_A = np.load(_cache(t, "_A.npy"))
+            feats_B = np.load(_cache(t, "_B.npy"))
+            clip_A, sr_A = audiofile.read(_cache(t, "_A.wav"))
+            clip_B, sr_A = audiofile.read(_cache(t, "_B.wav"))
+            clips.append((t, clip_A, feats_A, clip_B, feats_B))
+        except IOError:
+            todo.append(t)
+    if todo:
+        print "Analyzing tracks, extracting representative clips:"
+    for i, t in enumerate(todo):
+        print "  [%d/%d] %s" % (1+i, len(todo), _caption(t))
+        (clip_A, feats_A), (clip_B, feats_B) = calc_clips(t)
+        writewav(_cache(t, "_A.wav"), clip_A)
+        writewav(_cache(t, "_B.wav"), clip_B)
+        np.save(_cache(t, "_A.npy"), feats_A)
+        np.save(_cache(t, "_B.npy"), feats_B)
+        clips.append((t, clip_A, feats_A, clip_B, feats_B))
+    return clips
+
+
 def run(seed, n_tracks, experiment):
     tracks = list(library.tracks())
     random.seed(seed)
     random.shuffle(tracks)
     subset = tracks[:n_tracks]
-    print "Reading tracks"
-    clips = list()
-    for i, t in enumerate(subset):
-        caption = _caption(t)
-        print "  [%d/%d] %s" % (1+i, len(subset), caption)
-        try:
-            (clip_A, feats_A), (clip_B, feats_B) = get_clips(t)
-            clips.append((t, clip_A, feats_A, clip_B, feats_B))
-        except KeyboardInterrupt:
-            sys.exit(0)
+    clips = read_tracks(subset)
     if experiment == 'similarity':
         from experiments.similarity import run
     elif experiment == 'clusters':
@@ -171,5 +172,8 @@ if __name__ == '__main__':
     parser.add_argument('experiment',
         choices=['similarity', 'clusters', 'features'])
     kwargs = vars(parser.parse_args())
-    run(**kwargs)
+    try:
+        run(**kwargs)
+    except KeyboardInterrupt:
+        sys.exit(0)
 
