@@ -67,30 +67,59 @@ def altfeats(clip):
     def energy(frame):
         return np.sum(frame ** 2) / np.float64(len(frame))
 
+    frame_len = 2048
+    n_fft = 1024
     window = hamming(2048)
-    [fbank, freqs] = mfcc.init(22050, 1025)
+    [fbank, freqs] = mfcc.init(22050.0, n_fft)
     clipfeats = list()
-    s_prev = np.zeros(1025)
-    for i in xrange(0, len(clip)-2047, 2048):
-        frame = clip[i:i+2048] * window
-        s = np.abs(np.fft.rfft(frame))
-        s /= len(s)
-        mfccs = mfcc.filter(s, fbank, 13)
-        framefeats = mfccs
+    s_prev = None
+    for i in xrange(0, len(clip)-frame_len+1, frame_len):
+        frame = clip[i:i+frame_len] * window
+        s = np.abs(np.fft.rfft(frame))[:n_fft] / float(n_fft)
         [centroid, spread] = spectral.centroid_and_spread(s, 22050)
         entropy = spectral.entropy(s)
-        flux = spectral.flux(s, s_prev)
-        s_prev = s
+        flux = spectral.flux(s, s_prev) if not s_prev is None else 0.0
         rolloff = spectral.rolloff(s, 0.90)
+        mfccs = mfcc.filter(s, fbank, 13)
         spectrals = [centroid, spread, entropy, flux, rolloff]
         framefeats = np.concatenate(([zcr(s), energy(s)], spectrals, mfccs))
         clipfeats.append(framefeats)
+        s_prev = s
     return np.array(clipfeats)
 
 
+def plot_feats(feats, ax):
+    pos = np.arange(feats.shape[1])
+    ax.violinplot(feats, pos, points=400, vert=False, widths=0.9,
+            showmeans=False, showextrema=True, showmedians=True)
+    # highlight the MFCC features
+    ax.axhspan(8-0.2,20+0.2, facecolor='red', alpha=0.15)
+    # highlight the chroma features
+    ax.axhspan(21-0.2,32+0.2, facecolor='blue', alpha=0.15)
+
+
 def run(clips):
-    # the subject of this experiment is a little unclear
-    # we want to measure the effectiveness of different groups of features
-    # for music similarity identification
-    pass
+    # Measure the effectiveness of different features for music similarity
+    # calculation.
+    # Compute the distribution of feature values across the track list.
+    # Plot a histogram for each feature.
+
+    orig_feats = list()
+    for t, clip_A, feats_A, clip_B, feats_B in clips:
+        orig_feats.append(feats_A)
+        orig_feats.append(feats_B)
+    orig_feats = np.concatenate(orig_feats, axis=0)
+
+    norm_feats = (orig_feats - orig_feats.mean(axis=0)) / orig_feats.std(axis=0)
+
+    # Display distributions of features with a violin plot.
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 8))
+
+    plot_feats(orig_feats, axes[0])
+    axes[0].set_title("tracks db features")
+
+    plot_feats(norm_feats, axes[1])
+    axes[1].set_title("normalized features")
+
+    plt.savefig("features.png", dpi=96, bbox_inches='tight')
 
