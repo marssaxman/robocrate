@@ -3,7 +3,7 @@ import os.path
 import sys
 import library
 import analysis
-import audiofile
+from musictoys import audiofile
 import scipy.spatial
 import numpy as np
 import random

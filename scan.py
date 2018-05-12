@@ -1,4 +1,4 @@
-import audiofile
+from musictoys import audiofile
 import os, os.path, sys
 from samplerate import resample
 import wave
@@ -136,10 +136,9 @@ def scan(source):
         print "[%d/%d] %s" % (i+1, len(worklist), printpath)
         try:
             _scan_file(path)
-        except IOError as e:
-            print "  failed: IOError (%s)" % str(e)
-        except AssertionError as e:
-            print "  failed: AssertionError (%s)" % str(e)
         except KeyboardInterrupt:
             sys.exit(0)
+        except Exception as e:
+            print "  failed: %s" % str(e)
+            pass
 
