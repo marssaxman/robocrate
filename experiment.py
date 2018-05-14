@@ -3,13 +3,12 @@ import os.path
 import sys
 import library
 import analysis
+import musictoys
 from musictoys import audiofile
 import scipy.spatial
 import numpy as np
 import random
-from samplerate import resample
 import argparse
-import wave
 import struct
 
 import matplotlib
@@ -36,19 +35,9 @@ def _cache(track, suffix):
 
 
 def calc_clips(track, plot=False):
-    # Load audio file
+    # Load audio file and normalize for analysis
     signal, samplerate = audiofile.read(track.source)
-    # Mix to mono
-    if hasattr(signal, 'ndim') and signal.ndim > 1:
-        signal = signal.mean(axis=1).astype(np.float)
-    # Resample down to 22050 Hz
-    if samplerate > 22050.0:
-        signal = resample(signal, 22050.0 / samplerate, 'sinc_fastest')
-        samplerate = 22050.0
-    # Normalize to -1..1
-    signal = signal.astype(np.float)
-    signal -= np.mean(signal)
-    signal /= np.max(np.abs(signal))
+    signal, samplerate = musictoys.analysis.normalize(signal, samplerate)
     # Extract some features and normalize them around their means.
     # We must transpose the features list because the extractor returns rows
     # of frames, and we want rows of features.
@@ -114,18 +103,6 @@ def calc_clips(track, plot=False):
     return ((clip_A, feats_A), (clip_B, feats_B))
 
 
-def writewav(path, clip, samplerate=22050):
-    wf = wave.open(path, 'wb')
-    if wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(int(samplerate))
-        samples = (clip * np.iinfo(np.int16).max).astype('<i2')
-        wf.writeframesraw(samples.tobytes())
-        wf.writeframes('')
-        wf.close()
-
-
 def read_tracks(subset):
     clips = list()
     todo = list()
@@ -143,8 +120,8 @@ def read_tracks(subset):
     for i, t in enumerate(todo):
         print "  [%d/%d] %s" % (1+i, len(todo), _caption(t))
         (clip_A, feats_A), (clip_B, feats_B) = calc_clips(t)
-        writewav(_cache(t, "_A.wav"), clip_A)
-        writewav(_cache(t, "_B.wav"), clip_B)
+        audiofile.write(_cache(t, "_A.wav"), clip_A, 22050)
+        audiofile.write(_cache(t, "_B.wav"), clip_B, 22050)
         np.save(_cache(t, "_A.npy"), feats_A)
         np.save(_cache(t, "_B.npy"), feats_B)
         clips.append((t, clip_A, feats_A, clip_B, feats_B))

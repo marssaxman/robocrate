@@ -1,7 +1,7 @@
 import os
 import os.path
 import sys
-import scipy.io.wavfile
+from musictoys import audiofile
 import analysis
 import numpy as np
 import random
@@ -16,9 +16,8 @@ from collections import Counter
 # https://jakevdp.github.io/PythonDataScienceHandbook/05.12-gaussian-mixtures.html
 
 
-
 def _calc_feats(path):
-    samplerate, data = scipy.io.wavfile.read(path)
+    data, samplerate = audiofile.read(path)
     featseries = analysis.extract(data, samplerate)
     return featseries
 

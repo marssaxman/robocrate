@@ -1,7 +1,6 @@
-from musictoys import audiofile
 import os, os.path, sys
-from samplerate import resample
-import wave
+import musictoys
+from musictoys import audiofile
 from mp3hash import mp3hash
 import eyed3
 import numpy as np
@@ -12,38 +11,17 @@ import summary
 import library
 
 
-def _normalize(signal, samplerate):
-    # Mix down to a single mono channel.
-    if hasattr(signal, 'ndim') and signal.ndim > 1:
-        print "  mix to mono"
-        signal = signal.mean(axis=1).astype(np.float)
-    # Resample down to 22050 Hz.
-    if samplerate > 22050.0:
-        print "  downsample to 22050 Hz"
-        signal = resample(signal, 22050.0 / samplerate, 'sinc_fastest')
-        samplerate = 22050.0
-    return signal, samplerate
-
-
 def _gen_summary(source, dest):
     # Read the audio data.
     signal, samplerate = audiofile.read(source)
     # Normalize to mono 22k for consistent analysis.
-    signal, samplerate = _normalize(signal, samplerate)
+    signal, samplerate = musictoys.analysis.normalize(signal, samplerate)
     # Find the most representative 30 seconds to use as a summary clip.
     print "  analyze"
     clip = summary.generate(signal, samplerate, duration=30.0)
     # Write the summary as a 16-bit WAV.
     print "  write summary"
-    wf = wave.open(dest, 'wb')
-    if wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(int(samplerate))
-        clip_bytes = (clip * np.iinfo(np.int16).max).astype('<i2').tobytes()
-        wf.writeframesraw(clip_bytes)
-        wf.writeframes('')
-        wf.close()
+    audiofile.write(dest, clip, samplerate)
 
 
 def _scan_file(source):
