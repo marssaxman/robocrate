@@ -28,6 +28,9 @@ class Track(object):
     def artist(self): return self._fields.get('artist')
 
     @property
+    def album_artist(self): return self._fields.get('album_artist')
+
+    @property
     def genre(self): return self._fields.get('genre')
 
     @property
@@ -35,6 +38,12 @@ class Track(object):
 
     @property
     def year(self): return self._fields.get('year')
+
+    @property
+    def publisher(self): return self._fields.get('publisher')
+
+    @property
+    def remixer(self): return self._fields.get('remixer')
 
     @property
     def summary_file(self):
@@ -55,6 +64,10 @@ class Track(object):
         if self.title:
             return self.title
         return os.path.splitext(os.path.basename(self.source))[0]
+
+    def update(self, fields):
+        self._fields.update(fields)
+        self.save()
 
     def save(self):
         tracks().save()

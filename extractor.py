@@ -18,9 +18,42 @@ def check(track):
     return os.path.isfile(track.details_file)
 
 
+def update_tags(blob, track):
+    # See if there's any interesting metadata we can harvest.
+    metadata = blob.get('metadata')
+    if not metadata:
+        return
+    tags = metadata.get('tags')
+    if not tags:
+        return
+    update = dict()
+    album = tags.get('album')
+    if album:
+        update['album'] = album[0]
+    artist = tags.get('artist')
+    if artist:
+        update['artist'] = artist[0]
+    title = tags.get('title')
+    if title:
+        update['title'] = title[0]
+    genre = tags.get('genre')
+    if genre:
+        update['genre'] = genre[0]
+    label = tags.get('label')
+    if label:
+        update['publisher'] = label[0]
+    remixer = tags.get('remixer')
+    if remixer:
+        update['remixer'] = remixer[0]
+    if len(update):
+        track.update(update)
+
+
 def generate(track):
     blob = extract(track.source, track.details_file)
     features.extract(blob, track)
+    update_tags(blob, track)
+
 
 def extract(audiofile, jsonfile=None):
     # Run the essentia streaming music extractor. Get its output.

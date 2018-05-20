@@ -31,6 +31,8 @@ def _scan_file(source):
                 info["title"] = tag.title
             if tag.artist:
                 info["artist"] = tag.artist
+            if tag.album_artist:
+                info["album_artist"] = tag.album_artist
             if tag.genre:
                 info["genre"] = tag.genre.name
             if tag.bpm:
@@ -38,6 +40,8 @@ def _scan_file(source):
             release_date = tag.best_release_date
             if release_date:
                 info["year"] = release_date.year
+            if tag.publisher:
+                info["publisher"] = tag.publisher
     except UnicodeDecodeError:
         pass
 
@@ -114,5 +118,5 @@ def scan(source=None):
     # If there are tracks in the library with no details, go analyze them.
     process(extractor, "Extracting music information")
     process(features, "Harvesting feature matrix")
-    process(summary, "Generating summary clips")
+    #process(summary, "Generating summary clips")
 
