@@ -3,8 +3,8 @@ import os.path
 import sys
 import library
 import analysis
-import musictoys
 from musictoys import audiofile
+import musictoys.analysis
 import scipy.spatial
 import numpy as np
 import random
@@ -17,27 +17,20 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 
-def _caption(track):
-    if track.title and track.artist:
-        return "%s - %s" % (track.artist, track.title)
-    if track.title:
-        return track.title
-    return os.path.splitext(os.path.basename(track.source))[0]
-
-
 def _cache(track, suffix):
     self_dir = os.path.dirname(os.path.realpath(__file__))
     cache_dir = os.path.join(self_dir, "science-cache")
     if not os.path.isdir(cache_dir):
         os.makedirs(cache_dir)
-    name = _caption(track) + suffix
+    name = track.caption + suffix
     return os.path.join(cache_dir, name)
 
 
 def calc_clips(track, plot=False):
     # Load audio file and normalize for analysis
-    signal, samplerate = audiofile.read(track.source)
-    signal, samplerate = musictoys.analysis.normalize(signal, samplerate)
+    signal = audiofile.read(track.source)
+    signal = musictoys.analysis.normalize(signal)
+    samplerate = signal.sample_rate
     # Extract some features and normalize them around their means.
     # We must transpose the features list because the extractor returns rows
     # of frames, and we want rows of features.
@@ -118,7 +111,7 @@ def read_tracks(subset):
     if todo:
         print "Analyzing tracks, extracting representative clips:"
     for i, t in enumerate(todo):
-        print "  [%d/%d] %s" % (1+i, len(todo), _caption(t))
+        print "  [%d/%d] %s" % (1+i, len(todo), t.caption)
         (clip_A, feats_A), (clip_B, feats_B) = calc_clips(t)
         audiofile.write(_cache(t, "_A.wav"), clip_A, 22050)
         audiofile.write(_cache(t, "_B.wav"), clip_B, 22050)

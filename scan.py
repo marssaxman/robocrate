@@ -1,27 +1,12 @@
 import os, os.path, sys
-import musictoys
 from musictoys import audiofile
 from mp3hash import mp3hash
 import eyed3
-import numpy as np
-import struct
 import random
 
 import summary
 import library
-
-
-def _gen_summary(source, dest):
-    # Read the audio data.
-    signal, samplerate = audiofile.read(source)
-    # Normalize to mono 22k for consistent analysis.
-    signal, samplerate = musictoys.analysis.normalize(signal, samplerate)
-    # Find the most representative 30 seconds to use as a summary clip.
-    print "  analyze"
-    clip = summary.generate(signal, samplerate, duration=30.0)
-    # Write the summary as a 16-bit WAV.
-    print "  write summary"
-    audiofile.write(dest, clip, samplerate)
+import extractor
 
 
 def _scan_file(source):
@@ -29,18 +14,10 @@ def _scan_file(source):
 
     source: an MP3, WAV, or other music file readable by ffmpeg
     """
-    hash = mp3hash(source)
-    base_path = os.path.join(library.dir, hash)
-
     # Generate the summary clip, if it doesn't already exist.
-    summary_path = base_path + '.wav'
-    if not os.path.isfile(summary_path):
-        _gen_summary(source, summary_path)
-
     info = {
         "source": os.path.abspath(source),
-        "hash": hash,
-        "summary": os.path.abspath(summary_path),
+        "hash": mp3hash(source),
     }
 
     # Add ID3 metadata, if available.
@@ -62,14 +39,16 @@ def _scan_file(source):
                 info["year"] = release_date.year
     except UnicodeDecodeError:
         pass
-    library.Track.create(**info)
+
+    # Insert the track record into our library.
+    track = library.Track.create(info)
 
 
 def _search(source):
     print "searching for music files in " + source
     worklist = []
     extensions = tuple(audiofile.extensions())
-    exclude = set([library.dir])
+    exclude = set([library.DIR])
     for root, dirs, files in os.walk(source):
         dirs[:] = [d for d in dirs if d not in exclude]
         for file in files:
@@ -83,12 +62,6 @@ def _filter_known(worklist):
     # Remove all the files which are already present in our track library.
     known = set()
     for info in library.tracks():
-        # We should have generated a summary clip for this track, and it should
-        # still exist where we expect it.
-        if not info.summary:
-            continue
-        if not os.path.isfile(info.summary):
-            continue
         if not info.source:
             continue
         known.add(info.source)
@@ -96,27 +69,57 @@ def _filter_known(worklist):
     return [p for p in abslist if not p in known]
 
 
-def scan(source):
-    if os.path.isdir(source):
+def attempt(func, *args, **kwargs):
+    try:
+        func(*args, **kwargs)
+    except KeyboardInterrupt:
+        sys.exit(0)
+    except IOError as e:
+        print "  failed: %s" % str(e)
+
+
+def scan(source=None):
+
+    if source is None:
+        basedir = library.source()
+        worklist = _search(basedir)
+    elif os.path.isdir(source):
         basedir = source
         worklist = _search(source)
     else:
         basedir = os.getcwd()
         worklist = [source]
-    random.shuffle(worklist)
-    print "skipping known files"
-    worklist = _filter_known(worklist)
-    if not os.path.isdir(library.dir):
-        os.makedirs(library.dir)
+
+    # Update the library track list.
+    if len(worklist):
+        random.shuffle(worklist)
+        print "Updating track library"
+        worklist = _filter_known(worklist)
     for i, path in enumerate(worklist):
         relpath = os.path.relpath(path, basedir)
         printpath = relpath if len(relpath) < len(path) else path
         print "[%d/%d] %s" % (i+1, len(worklist), printpath)
-        try:
-            _scan_file(path)
-        except KeyboardInterrupt:
-            sys.exit(0)
-        except Exception as e:
-            print "  failed: %s" % str(e)
-            pass
+        attempt(_scan_file, path)
+
+    # If there are tracks in the library with no details, go analyze them.
+    worklist = [t for t in library.tracks() if not os.path.isfile(t.details)]
+    if len(worklist):
+        random.shuffle(worklist)
+        print "Extracting music information"
+    for i, track in enumerate(worklist):
+        print "[%d/%d] %s" % (i+1, len(worklist), track.caption)
+        attempt(extractor.extract, track.source, track.details)
+
+    # If there are files in the library which are missing their summaries,
+    # go generate summary clips.
+    worklist = [t for t in library.tracks() if not os.path.isfile(t.summary)]
+    if len(worklist):
+        random.shuffle(worklist)
+        print "Generating summary clips"
+    for i, track in enumerate(worklist):
+        print "[%d/%d] %s" % (i+1, len(worklist), track.caption)
+        attempt(summary.generate, track.source, track.summary)
+
+    # future: extract relevant features from essentia details and save as
+    # numpy file; this will save a lot of JSON-parsing time
 

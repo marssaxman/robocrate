@@ -1,14 +1,19 @@
 import os, os.path
+import sys
 import shutil
 import json
 
 
-dir = os.path.expanduser("~/.robocrate")
+DIR = os.path.expanduser("~/.robocrate")
+LIBRARY = os.path.join(DIR, "library.json")
+
+_library = None
+_tracklist = None
 
 
 class Track(object):
-    def __init__(self, **kwargs):
-        self._fields = dict(kwargs)
+    def __init__(self, fields):
+        self._fields = fields
 
     @property
     def source(self): return self._fields.get('source')
@@ -33,46 +38,140 @@ class Track(object):
 
     @property
     def summary(self):
-        return os.path.join(dir, self.hash + '.wav')
+        return os.path.join(DIR, self.hash + '.wav')
+
+    @property
+    def details(self):
+        return os.path.join(DIR, self.hash + '.json')
+
+    @property
+    def caption(self):
+        if self.title and self.artist:
+            return "%s - %s" % (self.artist, self.title)
+        if self.title:
+            return self.title
+        return os.path.splitext(os.path.basename(self.source))[0]
 
     def save(self):
-        filename = self._fields['hash'] + ".json"
-        dest = os.path.join(dir, filename)
-        with open(dest, 'w') as fp:
-            json.dump(self._fields, fp)
+        tracks().save()
 
-    @classmethod
-    def create(cls, **kwargs):
-        rec = cls(**kwargs)
-        rec.save()
-        return rec
+    @staticmethod
+    def create(fields):
+        assert fields['source']
+        assert fields['hash']
+        return tracks().insert(fields)
+
+
+class Tracklist(object):
+    def __init__(self, track_dicts):
+        self._track_dicts = track_dicts
+        self._track_objs = [Track(t) for t in track_dicts]
+
+    def __len__(self):
+        return len(self._track_objs)
+
+    def __getitem__(self, index):
+        return self._track_objs[index]
+
+    def __iter__(self):
+        for t in self._track_objs:
+            yield t
+
+    def save(self):
+        commit()
+
+    def insert(self, fields):
+        self._track_dicts.append(fields)
+        t = Track(fields)
+        self._track_objs.append(t)
+        commit()
+        return t
+
+
+def load():
+    global _library
+    if not _library is None:
+        return
+    if not os.path.isdir(DIR):
+        sys.stderr.write(
+            "Cannot find ~/.robocrate directory; must 'init' first.\n")
+        sys.exit(1)
+    if not os.path.isfile(LIBRARY):
+        sys.stderr.write(
+            "Cannot find ~/.robocrate/config.json file; must 'init' first.\n")
+        sys.exit(1)
+    with open(LIBRARY, 'r') as fd:
+        _library = json.load(fd)
+
+
+def commit():
+    global _library
+    with open(LIBRARY, 'w') as fd:
+        json.dump(_library, fd)
+
+
+def source():
+    global _library
+    load()
+    return _library['source']
 
 
 def tracks():
-    # Load all the JSON files in the cache dir. Each one describes one track.
-    # Return a list of dicts containing the library info.
-    table = list()
-    for name in os.listdir(dir):
-        if not name.endswith(".json"):
-            continue
-        with open(os.path.join(dir, name), 'r') as fd:
-            fields = json.load(fd)
-            table.append(Track(**fields))
-    return table
+    global _library
+    global _tracklist
+    if _tracklist is None:
+        load()
+        _tracklist = Tracklist(_library['tracks'])
+    return _tracklist
 
 
 def clean():
-    if not os.path.isdir(dir):
+    if not os.path.isdir(DIR):
         return
-    for name in os.listdir(dir):
-        path = os.path.join(dir, name)
+    if os.path.isfile(LIBRARY):
+        load()
+
+    # Make a list of the files we expect to find in the library.
+    # We'll delete everything we don't recognize.
+    expected = {LIBRARY}
+    for track in tracks():
+        summary = track.get('summary')
+        if summary:
+            expected.add(os.path.abspath(summary))
+        details = track.get('details')
+        if details:
+            expected.add(os.path.abspath(details))
+        features = track.get('features')
+        if features:
+            expected.add(os.path.abspath(features))
+
+    for name in os.listdir(DIR):
+        path = os.path.abspath(os.path.join(DIR, name))
+        if path in expected:
+            continue
         if os.path.isfile(path):
             os.unlink(path)
         else:
             shutil.rmtree(path)
 
 
-def init():
-    if not os.path.isdir(dir):
-        os.makedirs(dir)
+def init(source):
+
+    if os.path.isfile(source):
+        sys.stderr.write("Source path '%s' is a file, not a directory.\n")
+        sys.exit(1)
+    if not os.path.isdir(source):
+        sys.stderr.write("Source directory '%s' does not exist.\n")
+        sys.exit(1)
+
+    if not os.path.isdir(DIR):
+        os.makedirs(DIR)
+
+    global _library
+    _library = {
+        "source": source,
+        "tracks": [],
+    }
+
+    commit()
 

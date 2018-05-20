@@ -6,15 +6,15 @@ from cluster import cluster
 import library
 
 
-def command_init():
-    library.init()
+def command_init(source):
+    library.init(source)
 
 
 def command_clean():
     library.clean()
 
 
-def command_scan(source):
+def command_scan(source=None):
     scan(source)
 
 
@@ -25,10 +25,15 @@ def command_cluster():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='command')
-    subparsers.add_parser('init')
+
+    parser_init = subparsers.add_parser('init')
+    parser_init.add_argument('source')
+
     subparsers.add_parser('clean')
+
     parser_scan = subparsers.add_parser('scan')
-    parser_scan.add_argument('source')
+    parser_scan.add_argument('source', nargs='?')
+
     parser_cluster = subparsers.add_parser('cluster')
 
     kwargs = vars(parser.parse_args())

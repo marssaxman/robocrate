@@ -2,6 +2,8 @@
 import analysis
 import scipy.spatial
 import numpy as np
+import musictoys
+from musictoys import audiofile
 
 
 def _norm0_1(matrix):
@@ -26,8 +28,8 @@ def _similarity_matrix(features):
     return _norm0_1(matrix)
 
 
-def generate(signal, sample_rate, duration=10.0):
-    signal_time = len(signal) / float(sample_rate)
+def extract(signal, duration=10.0):
+    signal_time = len(signal) / float(signal.sample_rate)
     # Find the most representative section of the source audio to use as its
     # summary. Return an audio clip with the specified duration.
     # Extract feature vector. Create self-similarity matrix.
@@ -48,4 +50,17 @@ def generate(signal, sample_rate, duration=10.0):
     start_idx = int(start_step / step_rate * sample_rate)
     stop_idx = int(stop_step / step_rate * sample_rate)
     return signal[start_idx:stop_idx]
+
+
+def generate(source, dest):
+    # Read the audio data.
+    signal = audiofile.read(source)
+    # Normalize to mono 22k for consistent analysis.
+    signal = musictoys.analysis.normalize(signal)
+    # Find the most representative 30 seconds to use as a summary clip.
+    print "  analyze"
+    clip = extract(signal, duration=30.0)
+    # Write the summary as a 16-bit WAV.
+    print "  write summary"
+    audiofile.write(dest, clip)
 

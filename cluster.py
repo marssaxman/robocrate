@@ -17,9 +17,8 @@ from collections import Counter
 
 
 def _calc_feats(path):
-    data, samplerate = audiofile.read(path)
-    featseries = analysis.extract(data, samplerate)
-    return featseries
+    data = audiofile.read(path)
+    return analysis.extract(data, data.sample_rate)
 
 
 def _caption(track):
