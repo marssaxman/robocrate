@@ -130,6 +130,14 @@ def init():
                     yield i
     _feature_paths = list(flatten(all_features))
     _feature_names = [".".join(str(f) for f in p) for p in _feature_paths]
+    # trim off the leading component since we believe names should be unique
+    # even without the top level namespace
+    _feature_names = [s.split('.', 1)[-1] for s in _feature_names]
+
+
+def names():
+    init()
+    return _feature_names
 
 
 def _follow(obj, key, *args):
@@ -161,6 +169,15 @@ def check(track):
 def generate(track):
     with open(track.details_file, 'r') as fd:
         extract(json.load(fd, strict=False), track)
+
+
+def matrix(tracks):
+    # returns an array with shape [tracks, features]
+    init()
+    empty = np.zeros(len(_feature_paths), dtype=np.float)
+    files = (t.features_file for t in tracks)
+    feats = [(np.load(f) if os.path.isfile(f) else empty) for f in files]
+    return np.array(feats)
 
 
 if __name__ == '__main__':
