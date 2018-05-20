@@ -4,9 +4,10 @@ from mp3hash import mp3hash
 import eyed3
 import random
 
-import summary
 import library
+import summary
 import extractor
+import features
 
 
 def _scan_file(source):
@@ -78,8 +79,17 @@ def attempt(func, *args, **kwargs):
         print "  failed: %s" % str(e)
 
 
-def scan(source=None):
+def process(module, label):
+    worklist = [t for t in library.tracks() if not module.check(t)]
+    if len(worklist):
+        random.shuffle(worklist)
+        print label
+    for i, track in enumerate(worklist):
+        print "[%d/%d] %s" % (i+1, len(worklist), track.caption)
+        attempt(module.generate, track)
 
+
+def scan(source=None):
     if source is None:
         basedir = library.source()
         worklist = _search(basedir)
@@ -102,24 +112,7 @@ def scan(source=None):
         attempt(_scan_file, path)
 
     # If there are tracks in the library with no details, go analyze them.
-    worklist = [t for t in library.tracks() if not os.path.isfile(t.details)]
-    if len(worklist):
-        random.shuffle(worklist)
-        print "Extracting music information"
-    for i, track in enumerate(worklist):
-        print "[%d/%d] %s" % (i+1, len(worklist), track.caption)
-        attempt(extractor.extract, track.source, track.details)
-
-    # If there are files in the library which are missing their summaries,
-    # go generate summary clips.
-    worklist = [t for t in library.tracks() if not os.path.isfile(t.summary)]
-    if len(worklist):
-        random.shuffle(worklist)
-        print "Generating summary clips"
-    for i, track in enumerate(worklist):
-        print "[%d/%d] %s" % (i+1, len(worklist), track.caption)
-        attempt(summary.generate, track.source, track.summary)
-
-    # future: extract relevant features from essentia details and save as
-    # numpy file; this will save a lot of JSON-parsing time
+    process(extractor, "Extracting music information")
+    process(features, "Harvesting feature matrix")
+    process(summary, "Generating summary clips")
 

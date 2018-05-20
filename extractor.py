@@ -4,6 +4,7 @@ from subprocess import PIPE
 import tempfile
 import json
 import sys
+import features
 
 
 def is_present():
@@ -12,6 +13,14 @@ def is_present():
     retcode = subprocess.call(args, stdout=PIPE)
     return retcode == 0
 
+
+def check(track):
+    return os.path.isfile(track.details_file)
+
+
+def generate(track):
+    blob = extract(track.source, track.details_file)
+    features.extract(blob, track)
 
 def extract(audiofile, jsonfile=None):
     # Run the essentia streaming music extractor. Get its output.
@@ -53,16 +62,31 @@ if __name__ == '__main__':
     check_present()
     info = extract(sys.argv[1])
 
-    def iterkeys(somedict):
-        for key, val in somedict.iteritems():
-            if isinstance(val, dict):
-                for sub in iterkeys(val):
-                    yield key + '.' + sub
-            elif isinstance(val, list):
-                yield "%s[%d]" % (key, len(val))
+    def printout(val, tabs):
+        if isinstance(val, dict):
+            if "mean" in val and "dmean" in val:
+                if isinstance(val["mean"], list):
+                    print "STATS [%d]" % len(val["mean"])
+                else:
+                    print "STATS"
+                return
             else:
-                yield key
+                print
+            tabs += "    "
+            for key in sorted(list(val.keys())):
+                sub = val[key]
+                print "%s%s:" % (tabs, key),
+                printout(sub, tabs)
+        elif isinstance(val, list):
+            print "[%d]" % len(val),
+            printout(val[0], tabs + "    ")
+        else:
+            name = str(type(val))
+            print {
+                "<type 'float'>": "float",
+                "<type 'unicode'>": "string",
+                "<type 'int'>": "int",
+            }.get(name, name)
 
-    for key in iterkeys(info):
-        print key
+    printout(info, "")
 

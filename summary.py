@@ -1,8 +1,9 @@
 # Generate a summary clip from a music recording.
+import os.path
 import analysis
 import scipy.spatial
 import numpy as np
-import musictoys
+import musictoys.analysis
 from musictoys import audiofile
 
 
@@ -52,9 +53,13 @@ def extract(signal, duration=10.0):
     return signal[start_idx:stop_idx]
 
 
-def generate(source, dest):
+def check(track):
+    return os.path.isfile(track.summary)
+
+
+def generate(track):
     # Read the audio data.
-    signal = audiofile.read(source)
+    signal = audiofile.read(track.source)
     # Normalize to mono 22k for consistent analysis.
     signal = musictoys.analysis.normalize(signal)
     # Find the most representative 30 seconds to use as a summary clip.
@@ -62,5 +67,5 @@ def generate(source, dest):
     clip = extract(signal, duration=30.0)
     # Write the summary as a 16-bit WAV.
     print "  write summary"
-    audiofile.write(dest, clip)
+    audiofile.write(track.summary_file, clip)
 

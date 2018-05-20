@@ -37,12 +37,16 @@ class Track(object):
     def year(self): return self._fields.get('year')
 
     @property
-    def summary(self):
+    def summary_file(self):
         return os.path.join(DIR, self.hash + '.wav')
 
     @property
-    def details(self):
+    def details_file(self):
         return os.path.join(DIR, self.hash + '.json')
+
+    @property
+    def features_file(self):
+        return os.path.join(DIR, self.hash + '.npy')
 
     @property
     def caption(self):
@@ -135,15 +139,12 @@ def clean():
     # We'll delete everything we don't recognize.
     expected = {LIBRARY}
     for track in tracks():
-        summary = track.get('summary')
-        if summary:
-            expected.add(os.path.abspath(summary))
-        details = track.get('details')
-        if details:
-            expected.add(os.path.abspath(details))
-        features = track.get('features')
-        if features:
-            expected.add(os.path.abspath(features))
+        if track.summary_file:
+            expected.add(os.path.abspath(track.summary_file))
+        if track.details_file:
+            expected.add(os.path.abspath(track.details_file))
+        if track.features_file:
+            expected.add(os.path.abspath(track.features_file))
 
     for name in os.listdir(DIR):
         path = os.path.abspath(os.path.join(DIR, name))

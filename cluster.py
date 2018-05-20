@@ -37,7 +37,7 @@ def _read_clips(tracks):
     work_list = []
     for i, t in enumerate(tracks):
         # Try to load a saved npy array file containing the feature vector.
-        path = t.summary
+        path = t.summary_file
         featfile = os.path.splitext(path)[0] + '.npy'
         try:
             feat_list[i] = np.load(featfile)
@@ -47,8 +47,8 @@ def _read_clips(tracks):
     for i, (feat_idx, t) in enumerate(work_list):
         print "[%d/%d] %s" % (i+1, len(work_list), _caption(t))
         try:
-            featvec = _calc_feats(t.summary)
-            featfile = os.path.splitext(t.summary)[0] + '.npy'
+            featvec = _calc_feats(t.summary_file)
+            featfile = os.path.splitext(t.summary_file)[0] + '.npy'
             np.save(featfile, featvec)
             feat_list[feat_idx] = featvec
         except KeyboardInterrupt:
