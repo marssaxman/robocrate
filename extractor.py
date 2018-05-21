@@ -1,4 +1,5 @@
-import os, os.path
+import os
+import os.path
 import subprocess
 from subprocess import PIPE
 import tempfile
@@ -7,9 +8,15 @@ import sys
 import features
 
 
+# NOTE: streaming_extractor_music has a dependency on 'libav'.
+# not sure how to test for that.
+# ooooh, statically linked versions available:
+#   http://acousticbrainz.org/download
+
+
 def is_present():
     # Is the essentia streaming music extractor present?
-    args = ['which', 'essentia_streaming_extractor_music']
+    args = ['which', 'streaming_extractor_music']
     retcode = subprocess.call(args, stdout=PIPE)
     return retcode == 0
 
@@ -63,7 +70,7 @@ def extract(audiofile, jsonfile=None):
             fd, temp = tempfile.mkstemp(prefix="essentia-", suffix=".json")
             os.close(fd)
             jsonfile = temp
-        args = ['essentia_streaming_extractor_music', audiofile, jsonfile]
+        args = ['streaming_extractor_music', audiofile, jsonfile]
         proc = subprocess.Popen(args, stdout=PIPE, stderr=PIPE)
         proc.communicate()
 
@@ -82,7 +89,7 @@ def check_present():
     if is_present():
         return
     message = \
-    """Cannot find executable 'essentia_streaming_extractor_music'.
+        """Cannot find executable 'streaming_extractor_music'.
     For information about the Essentia extractor, please visit:
         http://essentia.upf.edu/documentation/streaming_extractor_music
     Download the extractor binaries here:
@@ -122,4 +129,3 @@ if __name__ == '__main__':
             }.get(name, name)
 
     printout(info, "")
-

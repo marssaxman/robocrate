@@ -1,14 +1,16 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import argparse
 from scan import scan
 from cluster import cluster
 import library
-import featselect
+from train import train
+import extractor
 
 
 def command_init(source):
     library.init(source)
+    extractor.check_present()
 
 
 def command_clean():
@@ -16,6 +18,7 @@ def command_clean():
 
 
 def command_scan(source=None):
+    extractor.check_present()
     scan(source)
 
 
@@ -24,7 +27,7 @@ def command_cluster():
 
 
 def command_train():
-    featselect.train()
+    train()
 
 
 if __name__ == '__main__':
