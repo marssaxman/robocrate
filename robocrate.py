@@ -1,33 +1,33 @@
 #!/usr/bin/env python
 
 import argparse
-from scan import scan
-from cluster import cluster
+import scan
+import cluster
 import library
-from train import train
+import train
 import extractor
 
 
-def command_init(source):
-    library.init(source)
+def command_init(*args, **kwargs):
+    library.init(*args, **kwargs)
     extractor.init()
 
 
-def command_clean():
-    library.clean()
+def command_clean(*args, **kwargs):
+    library.clean(*args, **kwargs)
 
 
-def command_scan(source=None):
+def command_scan(*args, **kwargs):
     extractor.init()
-    scan(source)
+    scan.scan(*args, **kwargs)
 
 
-def command_cluster():
-    cluster()
+def command_cluster(*args, **kwargs):
+    cluster.cluster(*args, **kwargs)
 
 
-def command_train(num_labels):
-    train(num_labels)
+def command_train(*args, **kwargs):
+    train.train(*args, **kwargs)
 
 
 if __name__ == '__main__':
@@ -38,14 +38,9 @@ if __name__ == '__main__':
     parser_init.add_argument('source')
 
     subparsers.add_parser('clean')
-
-    parser_scan = subparsers.add_parser('scan')
-    parser_scan.add_argument('source', nargs='?')
-
-    parser_cluster = subparsers.add_parser('cluster')
-
-    parser_train = subparsers.add_parser('train')
-    parser_train.add_argument('--num_labels', type=int, nargs='?')
+    scan.add_arguments(subparsers.add_parser('scan'))
+    subparsers.add_parser('cluster')
+    train.add_arguments(subparsers.add_parser('train'))
 
     kwargs = vars(parser.parse_args())
     globals()["command_" + kwargs.pop('command')](**kwargs)

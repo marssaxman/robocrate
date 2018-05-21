@@ -1,4 +1,5 @@
-import os, os.path
+import os
+import os.path
 import sys
 import shutil
 import json
@@ -44,6 +45,21 @@ class Track(object):
 
     @property
     def remixer(self): return self._fields.get('remixer')
+
+    def tags(self):
+        names = set()
+        # multiple artists are often packed in for a single track
+        if self.artist:
+            names.update(self.artist.split(", "))
+        if self.album_artist:
+            names.update(self.album_artist.split(", "))
+        if self.remixer:
+            names.update(self.remixer.split(", "))
+        if self.genre:
+            names.add(self.genre)
+        if self.publisher:
+            names.add(self.publisher)
+        return names
 
     @property
     def summary_file(self):
@@ -119,8 +135,20 @@ class Tracklist(object):
             for i, t in enumerate(self._track_objs):
                 if t.hash == track.hash:
                     del self._track_objs[i]
-                    break;
+                    break
         commit()
+
+
+def tags():
+    # Return a dict from tags to lists of tracks with those tags.
+    tags = dict()
+    for t in tracks():
+        for n in t.tags():
+            if n in tags:
+                tags[n].append(t)
+            else:
+                tags[n] = [t]
+    return tags
 
 
 def load():
@@ -214,4 +242,3 @@ def init(source):
     }
 
     commit()
-

@@ -1,4 +1,6 @@
-import os, os.path, sys
+import os
+import os.path
+import sys
 from mp3hash import mp3hash
 import eyed3
 import random
@@ -47,7 +49,7 @@ def _search(source):
     print("searching for music files in " + source)
     worklist = []
     extensions = ('.aac', '.aiff', '.au', '.flac', '.m4a', '.m4r',
-            '.mp2', '.mp3', '.mp4', '.ogg', '.oga', '.wav', '.wma')
+                  '.mp2', '.mp3', '.mp4', '.ogg', '.oga', '.wav', '.wma')
     exclude = set([library.DIR])
     for root, dirs, files in os.walk(source):
         dirs[:] = [d for d in dirs if d not in exclude]
@@ -114,3 +116,6 @@ def scan(source=None):
     process(extractor, "Extracting music information")
     process(features, "Harvesting feature matrix")
 
+
+def add_arguments(parser):
+    parser.add_argument('source', nargs='?')
