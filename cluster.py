@@ -43,11 +43,11 @@ def cluster():
     model = sklearn.mixture.GaussianMixture(
         n_components=n_clusters, covariance_type='full')
 
-    print "fitting model"
+    print("fitting model")
     model.fit(feats)
 
     # Make predictions: which tracks should go into which clusters?
-    print "generating predictions"
+    print("generating predictions")
     labels = model.predict(feats)
     proba = model.predict_proba(feats)
 
@@ -60,7 +60,7 @@ def cluster():
     for i, crate in enumerate(groups):
         if len(crate) < 4:
             continue
-        print "Crate %d contains %d tracks" % (i, len(crate))
+        print("Crate %d contains %d tracks" % (i, len(crate)))
 
         # Print out a playlist with all these tracks.
         with open(os.path.join(os.getcwd(), "crate%d.m3u" % i), 'w') as fd:
@@ -76,23 +76,23 @@ def cluster():
         clusterdist = cosine_distances(feats, [clustermean])[:,0]
 
         bestfits = np.argsort(clusterdist)
-        print "  Representative tracks:"
+        print("  Representative tracks:")
         for j in bestfits[:5]:
             info = tracks[j]
-            print "    %s" % _caption(info)
+            print("    %s" % info.caption)
 
         # Which are the most frequently represented artists?
-        print "  Most frequent artists:"
+        print("  Most frequent artists:")
         artists = Counter(t.artist for t in crate if not t.artist is None)
-        print "    %s" % ", ".join(k for k,v in artists.most_common(12))
-        print "  Most common genres:"
-        print "    %s" % ", ".join(_top3desc(t.genre for t in crate))
+        print("    %s" % ", ".join(k for k,v in artists.most_common(12)))
+        print("  Most common genres:")
+        print("    %s" % ", ".join(_top3desc(t.genre for t in crate)))
 
         # What is a representative BPM range?
         if len(crate) > 1:
             bpms = [t.bpm for t in crate if not t.bpm is None]
             bpms = np.array(bpms, dtype=np.float)
             bpm_mean, bpm_std = np.mean(bpms), np.std(bpms)
-            print "  Tempo: %d bpm (+/- %d)" % (bpm_mean, bpm_std)
+            print("  Tempo: %d bpm (+/- %d)" % (bpm_mean, bpm_std))
 
-        print ""
+        print("")

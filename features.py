@@ -182,7 +182,7 @@ def matrix(tracks):
 
 if __name__ == '__main__':
     init()
-    print "Saved features array schema:"
+    print("Saved features array schema:")
     for i in enumerate(_feature_names):
-        print "    %d: '%s'" % i
-    print "Total features: %d" % len(_feature_names)
+        print("    %d: '%s'" % i)
+    print("Total features: %d" % len(_feature_names))

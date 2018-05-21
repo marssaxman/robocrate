@@ -47,18 +47,18 @@ def collect_labels(libtracks):
     meansquare = sum(len(v) ** 2 for v in labels.itervalues()) / len(labels)
     threshold = int(meansquare ** 0.5)
     labels = [(k, v) for k, v in labels.iteritems() if len(v) > threshold]
-    print "Selecting the %d most common tags (at least %d tracks each):" % \
-        (len(labels), threshold)
+    print("Selecting the %d most common tags (at least %d tracks each):" % \
+        (len(labels), threshold))
     for k, v in labels:
-        print "    '%s': %d" % (k, len(v))
+        print("    '%s': %d" % (k, len(v)))
 
     # Count the proportion of tracks we'll be using
     keephashes = set()
     for _, v in labels:
         keephashes.update(t.hash for t in v)
     numkeep = len(keephashes)
-    print "Using %d tracks out of %d (%.1f%% of the library)" % (
-        numkeep, len(libtracks), (numkeep * 100.0 / len(libtracks)))
+    print("Using %d tracks out of %d (%.1f%% of the library)" % (
+        numkeep, len(libtracks), (numkeep * 100.0 / len(libtracks))))
     return labels
 
 
@@ -84,17 +84,17 @@ def generate_target(labels):
 
 
 def reduce_kbest(feats, target, feat_names):
-    print "reducing features with SelectKBest/chi2"
+    print("reducing features with SelectKBest/chi2")
     skb = SelectKBest(chi2, k=200)
     scaled_feats = preprocessing.minmax_scale(feats)
     skb.fit(scaled_feats, target)
-    print "feature reduction complete"
+    print("feature reduction complete")
     feats = skb.transform(feats)
     subset = skb.get_support(indices=True)
-    print "skb.scores_.shape", skb.scores_.shape
-    print "subset.shape", subset.shape
+    print("skb.scores_.shape", skb.scores_.shape)
+    print("subset.shape", subset.shape)
     for i in subset:
-        print "    %.1f: '%s'" % (skb.scores_[i], feat_names[i])
+        print("    %.1f: '%s'" % (skb.scores_[i], feat_names[i]))
     return feats, [feat_names[i] for i in subset]
 
 
@@ -111,18 +111,18 @@ def train():
     feats_train, feats_test, target_train, target_test = \
         train_test_split(feats, target, test_size=0.4, random_state=0)
 
-    print "training classifier..."
+    print("training classifier...")
     clf = RandomForestClassifier(n_estimators=10000, random_state=0, n_jobs=-1)
     clf.fit(feats_train, target_train)
     mean_importance = clf.feature_importances_.mean()
     # Measure prediction accuracy for the original training run.
     target_pred = clf.predict(feats_test)
     orig_score = accuracy_score(target_test, target_pred)
-    print "accuracy score with %d features: %.2f%%" % \
-        (len(feat_names), orig_score * 100.0)
+    print("accuracy score with %d features: %.2f%%" % \
+        (len(feat_names), orig_score * 100.0))
 
     # Reduce the feature set.
-    print "selecting best features (threshold=%.2e)..." % mean_importance
+    print("selecting best features (threshold=%.2e)..." % mean_importance)
     sfm = SelectFromModel(clf, threshold=mean_importance)
     sfm.fit(feats_train, target_train)
     # Print the names of the most important features
@@ -132,12 +132,12 @@ def train():
     #    print "    %.1f: '%s'" % (importance, feat_names[i])
 
     # make a new training set with just those features
-    print "preparing new training subset..."
+    print("preparing new training subset...")
     slim_feats_train = sfm.transform(feats_train)
     slim_feats_test = sfm.transform(feats_test)
 
     # train a new classifier using the reduced feature set
-    print "training subset classifier..."
+    print("training subset classifier...")
     clf_slim = RandomForestClassifier(
         n_estimators=10000, random_state=0, n_jobs=-1)
     clf_slim.fit(slim_feats_train, target_train)
@@ -145,8 +145,8 @@ def train():
     # measure accuracy of the retrained models
     slim_pred = clf_slim.predict(slim_feats_test)
     slim_score = accuracy_score(target_test, slim_pred)
-    print "subset accuracy with %d features: %.2f%%" % \
-        (len(feature_subset), slim_score * 100.0)
+    print("subset accuracy with %d features: %.2f%%" % \
+        (len(feature_subset), slim_score * 100.0))
 
 
 if __name__ == '__main__':

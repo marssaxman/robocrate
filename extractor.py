@@ -12,13 +12,32 @@ import features
 # not sure how to test for that.
 # ooooh, statically linked versions available:
 #   http://acousticbrainz.org/download
+extractor_name = 'essentia_streaming_extractor_music'
 
-
-def is_present():
+def init():
     # Is the essentia streaming music extractor present?
-    args = ['which', 'streaming_extractor_music']
+    # Is it named 'essentia_streaming_extractor_music' or just the simpler
+    # 'streaming_extractor_music'? We prefer the former if present.
+    global extractor_name
+    args = ['which', extractor_name]
     retcode = subprocess.call(args, stdout=PIPE)
-    return retcode == 0
+    if retcode != 0:
+        # fall back to the other possible file name
+        extractor_name = 'streaming_extractor_music'
+        args = ['which', extractor_name]
+        retcode = subprocess.call(args, stdout=PIPE)
+    if retcode == 0:
+        return
+    message = \
+        """Cannot find executable 'streaming_extractor_music'.
+    For information about the Essentia extractor, please visit:
+        http://essentia.upf.edu/documentation/streaming_extractor_music
+    Download the extractor binaries here:
+        http://acousticbrainz.org/download"""
+    # official URL is http://essentia.upf.edu/documentation/extractors, but the
+    # acousticbrainz binaries are statically linked, which is so much nicer
+    print(message)
+    sys.exit(1)
 
 
 def check(track):
@@ -70,7 +89,8 @@ def extract(audiofile, jsonfile=None):
             fd, temp = tempfile.mkstemp(prefix="essentia-", suffix=".json")
             os.close(fd)
             jsonfile = temp
-        args = ['streaming_extractor_music', audiofile, jsonfile]
+        global extractor_name
+        args = [extractor_name, audiofile, jsonfile]
         proc = subprocess.Popen(args, stdout=PIPE, stderr=PIPE)
         proc.communicate()
 
@@ -85,47 +105,34 @@ def extract(audiofile, jsonfile=None):
             os.remove(temp)
 
 
-def check_present():
-    if is_present():
-        return
-    message = \
-        """Cannot find executable 'streaming_extractor_music'.
-    For information about the Essentia extractor, please visit:
-        http://essentia.upf.edu/documentation/streaming_extractor_music
-    Download the extractor binaries here:
-        http://essentia.upf.edu/documentation/extractors"""
-    print message
-    sys.exit(1)
-
-
 if __name__ == '__main__':
-    check_present()
+    init()
     info = extract(sys.argv[1])
 
     def printout(val, tabs):
         if isinstance(val, dict):
             if "mean" in val and "dmean" in val:
                 if isinstance(val["mean"], list):
-                    print "STATS [%d]" % len(val["mean"])
+                    print("STATS [%d]" % len(val["mean"]))
                 else:
-                    print "STATS"
+                    print("STATS")
                 return
             else:
-                print
+                print()
             tabs += "    "
             for key in sorted(list(val.keys())):
                 sub = val[key]
-                print "%s%s:" % (tabs, key),
+                print("%s%s:" % (tabs, key),)
                 printout(sub, tabs)
         elif isinstance(val, list):
-            print "[%d]" % len(val),
+            print("[%d]" % len(val),)
             printout(val[0], tabs + "    ")
         else:
             name = str(type(val))
-            print {
+            print({
                 "<type 'float'>": "float",
                 "<type 'unicode'>": "string",
                 "<type 'int'>": "int",
-            }.get(name, name)
+            }.get(name, name))
 
     printout(info, "")

@@ -10,7 +10,7 @@ import extractor
 
 def command_init(source):
     library.init(source)
-    extractor.check_present()
+    extractor.init()
 
 
 def command_clean():
@@ -18,7 +18,7 @@ def command_clean():
 
 
 def command_scan(source=None):
-    extractor.check_present()
+    extractor.init()
     scan(source)
 
 

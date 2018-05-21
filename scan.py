@@ -4,7 +4,6 @@ import eyed3
 import random
 
 import library
-#import summary
 import extractor
 import features
 
@@ -45,7 +44,7 @@ def _scan_file(source):
 
 
 def _search(source):
-    print "searching for music files in " + source
+    print("searching for music files in " + source)
     worklist = []
     extensions = ('.aac', '.aiff', '.au', '.flac', '.m4a', '.m4r',
             '.mp2', '.mp3', '.mp4', '.ogg', '.oga', '.wav', '.wma')
@@ -76,16 +75,16 @@ def attempt(func, *args, **kwargs):
     except KeyboardInterrupt:
         sys.exit(0)
     except IOError as e:
-        print "  failed: %s" % str(e)
+        print("  failed: %s" % str(e))
 
 
 def process(module, label):
     worklist = [t for t in library.tracks() if not module.check(t)]
     if len(worklist):
         random.shuffle(worklist)
-        print label
+        print(label)
     for i, track in enumerate(worklist):
-        print "[%d/%d] %s" % (i+1, len(worklist), track.caption)
+        print("[%d/%d] %s" % (i+1, len(worklist), track.caption))
         attempt(module.generate, track)
 
 
@@ -103,16 +102,15 @@ def scan(source=None):
     # Update the library track list.
     if len(worklist):
         random.shuffle(worklist)
-        print "Updating track library"
+        print("Updating track library")
         worklist = _filter_known(worklist)
     for i, path in enumerate(worklist):
         relpath = os.path.relpath(path, basedir)
         printpath = relpath if len(relpath) < len(path) else path
-        print "[%d/%d] %s" % (i+1, len(worklist), printpath)
+        print("[%d/%d] %s" % (i+1, len(worklist), printpath))
         attempt(_scan_file, path)
 
     # If there are tracks in the library with no details, go analyze them.
     process(extractor, "Extracting music information")
     process(features, "Harvesting feature matrix")
-    #process(summary, "Generating summary clips")
 

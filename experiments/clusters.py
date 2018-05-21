@@ -23,7 +23,7 @@ def run(clips):
     for t, clip_A, feats_A, clip_B, feats_B in clips:
         X.append(statify_feats(feats_A).ravel())
     X = np.array(X)
-    print "X.shape == %s" % str(X.shape)
+    print("X.shape == %s" % str(X.shape))
 
     print("Computing embedding")
     X_red = manifold.SpectralEmbedding(n_components=2).fit_transform(X)
