@@ -83,39 +83,19 @@ def generate_target(labels):
     return (t for t, _ in tracklist.itervalues()), target
 
 
-def reduce_kbest(feats, target):
+def reduce_kbest(feats, target, feat_names):
     print "reducing features with SelectKBest/chi2"
     skb = SelectKBest(chi2, k=200)
     scaled_feats = preprocessing.minmax_scale(feats)
-    fewer_feats = skb.fit_transform(scaled_feats, target)
+    skb.fit(scaled_feats, target)
     print "feature reduction complete"
-    feature_names = features.names()
+    feats = skb.transform(feats)
+    subset = skb.get_support(indices=True)
     print "skb.scores_.shape", skb.scores_.shape
-    print "skb.get_support.shape", skb.get_support(indices=True).shape
-    for i in skb.get_support(indices=True):
-        print "    %.1f: '%s'" % (skb.scores_[i], feature_names[i])
-    return feats, target
-
-
-def reduce_recursive(feats, target):
-    print "reducing features with LassocV"
-    clf = MultiTaskLassoCV()
-    sfm = SelectFromModel(clf, threshold='mean')
-    sfm.fit(feats, target)
-    # Print the names of the most important features
-    feature_subset = sfm.get_support(indices=True)
-    print("Num Features: %d") % sfm.n_features_
-    print("Selected Features: %s") % sfm.support_
-    print("Feature Ranking: %s") % sfm.ranking_
-
-    #sklearn.multiclass.OneVsRestClassifier
-    #estimator = SVR(kernel="linear")
-    #model = LogisticRegression()
-    #rfe = RFE(estimator, 3)
-    #rfe.fit(feats, target)
-    #print("Num Features: %d") % fit.n_features_
-    #print("Selected Features: %s") % fit.support_
-    #print("Feature Ranking: %s") % fit.ranking_
+    print "subset.shape", subset.shape
+    for i in subset:
+        print "    %.1f: '%s'" % (skb.scores_[i], feat_names[i])
+    return feats, [feat_names[i] for i in subset]
 
 
 def train():
@@ -123,11 +103,10 @@ def train():
     labels = collect_labels(libtracks)
     tracklist, target = generate_target(labels)
     feats = features.matrix(tracklist)
+    feat_names = features.names()
 
-    #feats, target = 
-    #reduce_kbest(feats, target)
+    #feats, feat_names = reduce_kbest(feats, target, feat_names)
 
-    reduce_recursive(feats, target)
     # We have labels and a data set. Split into test & training sets.
     feats_train, feats_test, target_train, target_test = \
         train_test_split(feats, target, test_size=0.4, random_state=0)
@@ -140,7 +119,7 @@ def train():
     target_pred = clf.predict(feats_test)
     orig_score = accuracy_score(target_test, target_pred)
     print "accuracy score with %d features: %.2f%%" % \
-        (len(features.names()), orig_score * 100.0)
+        (len(feat_names), orig_score * 100.0)
 
     # Reduce the feature set.
     print "selecting best features (threshold=%.2e)..." % mean_importance
@@ -148,10 +127,9 @@ def train():
     sfm.fit(feats_train, target_train)
     # Print the names of the most important features
     feature_subset = sfm.get_support(indices=True)
-    #feature_names = features.names()
     # for i in feature_subset:
     #    importance = clf.feature_importances_[i] / mean_importance
-    #    print "    %.1f: '%s'" % (importance, feature_name[i])
+    #    print "    %.1f: '%s'" % (importance, feat_names[i])
 
     # make a new training set with just those features
     print "preparing new training subset..."

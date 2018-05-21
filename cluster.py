@@ -1,7 +1,6 @@
 import os
 import os.path
 import sys
-from musictoys import audiofile
 import analysis
 import numpy as np
 import random
@@ -10,50 +9,12 @@ import sklearn.mixture
 import sklearn.preprocessing
 import sklearn.random_projection
 import library
+import features
 from collections import Counter
 
 # info here:
 # https://jakevdp.github.io/PythonDataScienceHandbook/05.12-gaussian-mixtures.html
 
-
-def _calc_feats(path):
-    data = audiofile.read(path)
-    return analysis.extract(data, data.sample_rate)
-
-
-def _caption(track):
-    if track.title and track.artist:
-        return "\"%s\" by %s" % (track.title, track.artist)
-    if track.title:
-        return track.title
-    return os.path.splitext(os.path.basename(track.source))[0]
-
-
-def _read_clips(tracks):
-    # Read the audio summary for each track in the library.
-    # Extract features. Return a list of feature summary vectors, with each
-    # index corresponding to one item in the track list.
-    feat_list = [None] * len(tracks)
-    work_list = []
-    for i, t in enumerate(tracks):
-        # Try to load a saved npy array file containing the feature vector.
-        path = t.summary_file
-        featfile = os.path.splitext(path)[0] + '.npy'
-        try:
-            feat_list[i] = np.load(featfile)
-        except IOError, ValueError:
-            work_list.append((i, t))
-    # Compute feature vectors for unprocessed files.
-    for i, (feat_idx, t) in enumerate(work_list):
-        print "[%d/%d] %s" % (i+1, len(work_list), _caption(t))
-        try:
-            featvec = _calc_feats(t.summary_file)
-            featfile = os.path.splitext(t.summary_file)[0] + '.npy'
-            np.save(featfile, featvec)
-            feat_list[feat_idx] = featvec
-        except KeyboardInterrupt:
-            sys.exit(0)
-    return feat_list
 
 
 def _count(items):
@@ -68,33 +29,16 @@ def _top3desc(items):
     return ["%s (%.1f%%)" % (k, v*100.0) for k, v in top3pct]
 
 
-def _feats_to_matrix(feat_list):
-    featlin = list()
-    for f in feat_list:
-        if f.shape[1] < 59:
-            f = np.pad(f, ((0,0), (0, 59-f.shape[1])), 'constant')
-            assert (34,59) == f.shape
-        featlin.append(f.ravel())
-    # PCA expects (n_observations, n_dimensions) so we must put each track
-    # in rows, so that feats.shape[0] == len(feat_list).
-    feats = np.row_stack(featlin)
-    return feats
-
-
 def cluster():
     # Read the metadata describing the tracks in the library.
+    # Load the feature data.
     tracks = library.tracks()
-    # Read each audio summary clip and extract its feature series.
-    feat_list = _read_clips(tracks)
-    feats = _feats_to_matrix(feat_list)
+    feats = features.matrix(tracks)
 
     # Normalize the input data.
-    feats = sklearn.preprocessing.scale(feats, axis=0)
+    feats = sklearn.preprocessing.scale(np.asarray(feats), axis=0)
 
-    # Reduce dimensionality.
-    transformer = sklearn.random_projection.SparseRandomProjection(eps=0.25)
-    feats = transformer.fit_transform(feats)
-
+    # Estimate the number of clusters needed.
     n_clusters = max(3, int(len(tracks) / 150.0))
     model = sklearn.mixture.GaussianMixture(
         n_components=n_clusters, covariance_type='full')
