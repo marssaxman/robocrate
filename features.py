@@ -117,17 +117,18 @@ def init():
         if isinstance(obj, int):
             for i in range(obj):
                 yield (i, )
-        elif isinstance(obj, str) or isinstance(obj, unicode):
-            yield (obj, )
         elif isinstance(obj, tuple):
             outer, inner = obj
             for o in flatten(outer):
                 for i in flatten(inner):
                     yield o + i
-        else:
+        elif isinstance(obj, list):
             for item in obj:
                 for i in flatten(item):
                     yield i
+        else:
+            yield (str(obj), )
+
     _feature_paths = list(flatten(all_features))
     _feature_names = [".".join(str(f) for f in p) for p in _feature_paths]
     # trim off the leading component since we believe names should be unique
