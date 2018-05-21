@@ -15,11 +15,10 @@ from sklearn.feature_selection import RFE
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import MultiTaskLassoCV
 
-# Use a random forest classifier to evaluate our massive array of features.
-# We'll use artist names and genre tags as training labels.
+# We'll use artist names, publishers, and genre names as label classes, then
+# train models and evaluate features to select a classifier for this dataset.
 
-
-def collect_labels(libtracks):
+def collect_labels(libtracks, num_labels = None):
     # Make an array of labels for training. Use the artist and genre tags
     # from the ID3 metadata.
     labels = dict()
@@ -41,16 +40,30 @@ def collect_labels(libtracks):
                 labels[n].append(t)
             else:
                 labels[n] = [t]
-    # We expect to have a long-tail distribution of tag population. Take the
-    # RMS average of the label population and use that as a threshold; this
-    # will leave us with a good handful of well-populated categories.
-    meansquare = sum(len(v) ** 2 for v in labels.itervalues()) / len(labels)
-    threshold = int(meansquare ** 0.5)
-    labels = [(k, v) for k, v in labels.iteritems() if len(v) > threshold]
-    print("Selecting the %d most common tags (at least %d tracks each):" % \
-        (len(labels), threshold))
+
+    if num_labels is None:
+        # We expect to have a long-tail distribution of tag population. Take the
+        # RMS average of the label population and use that as a threshold; this
+        # will leave us with a good handful of well-populated categories.
+        meansquare = sum(len(v) ** 2 for v in labels.itervalues()) / len(labels)
+        threshold = int(meansquare ** 0.5)
+        labels = [(k, v) for k, v in labels.iteritems() if len(v) > threshold]
+        print("Selecting the %d most common tags, with at least %d tracks each):" % \
+            (len(labels), threshold))
+    else:
+        # The user has requested a specific number of category labels. Sort the
+        # list, throw away the outliers on either end, and return some from
+        # the more-commonly-represented end of the normal range.
+        labels = sorted(labels.items(), key=lambda x: len(x[1]), reverse=True)
+        if num_labels * 2 < len(labels):
+            # throw away the leading outliers
+            del labels[:num_labels]
+        del labels[num_labels:]
+        print("Selecting %d representative tags:" % len(labels))
+
     for k, v in labels:
         print("    '%s': %d" % (k, len(v)))
+
 
     # Count the proportion of tracks we'll be using
     keephashes = set()
@@ -83,29 +96,14 @@ def generate_target(labels):
     return (t for t, _ in tracklist.itervalues()), target
 
 
-def reduce_kbest(feats, target, feat_names):
-    print("reducing features with SelectKBest/chi2")
-    skb = SelectKBest(chi2, k=200)
-    scaled_feats = preprocessing.minmax_scale(feats)
-    skb.fit(scaled_feats, target)
-    print("feature reduction complete")
-    feats = skb.transform(feats)
-    subset = skb.get_support(indices=True)
-    print("skb.scores_.shape", skb.scores_.shape)
-    print("subset.shape", subset.shape)
-    for i in subset:
-        print("    %.1f: '%s'" % (skb.scores_[i], feat_names[i]))
-    return feats, [feat_names[i] for i in subset]
-
-
-def train():
+def train(num_labels=None):
+    # Load the track library. Collect metadata labels. Generate a target
+    # matrix. Load features for each track in the target matrix.
     libtracks = library.tracks()
-    labels = collect_labels(libtracks)
+    labels = collect_labels(libtracks, num_labels)
     tracklist, target = generate_target(labels)
     feats = features.matrix(tracklist)
     feat_names = features.names()
-
-    #feats, feat_names = reduce_kbest(feats, target, feat_names)
 
     # We have labels and a data set. Split into test & training sets.
     feats_train, feats_test, target_train, target_test = \
@@ -127,9 +125,9 @@ def train():
     sfm.fit(feats_train, target_train)
     # Print the names of the most important features
     feature_subset = sfm.get_support(indices=True)
-    # for i in feature_subset:
-    #    importance = clf.feature_importances_[i] / mean_importance
-    #    print "    %.1f: '%s'" % (importance, feat_names[i])
+    for i in feature_subset:
+        importance = clf.feature_importances_[i] / mean_importance
+        print "    %.1f: '%s'" % (importance, feat_names[i])
 
     # make a new training set with just those features
     print("preparing new training subset...")
@@ -149,5 +147,24 @@ def train():
         (len(feature_subset), slim_score * 100.0))
 
 
+# A variety of learning experiments follow
+
+def reduce_kbest(feats, target, feat_names):
+    print("reducing features with SelectKBest/chi2")
+    skb = SelectKBest(chi2, k=200)
+    scaled_feats = preprocessing.minmax_scale(feats)
+    skb.fit(scaled_feats, target)
+    print("feature reduction complete")
+    feats = skb.transform(feats)
+    subset = skb.get_support(indices=True)
+    print("skb.scores_.shape", skb.scores_.shape)
+    print("subset.shape", subset.shape)
+    for i in subset:
+        print("    %.1f: '%s'" % (skb.scores_[i], feat_names[i]))
+    return feats, [feat_names[i] for i in subset]
+
+
 if __name__ == '__main__':
-    train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--num_labels', type=int, default=None)
+    train(**var(parser.parse_args()))

@@ -26,8 +26,8 @@ def command_cluster():
     cluster()
 
 
-def command_train():
-    train()
+def command_train(num_labels):
+    train(num_labels)
 
 
 if __name__ == '__main__':
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     parser_cluster = subparsers.add_parser('cluster')
 
     parser_train = subparsers.add_parser('train')
+    parser_train.add_argument('--num_labels', type=int, nargs='?')
 
     kwargs = vars(parser.parse_args())
     globals()["command_" + kwargs.pop('command')](**kwargs)
