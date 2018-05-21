@@ -78,6 +78,10 @@ class Track(object):
         assert fields['hash']
         return tracks().insert(fields)
 
+    def delete(self):
+        tracks().delete(self)
+        self._fields.clear()
+
 
 class Tracklist(object):
     def __init__(self, track_dicts):
@@ -103,6 +107,20 @@ class Tracklist(object):
         self._track_objs.append(t)
         commit()
         return t
+
+    def delete(self, track):
+        for i, fields in enumerate(self._track_dicts):
+            if fields.get("hash") == track.hash:
+                del self._track_dicts[i]
+                break
+        if self._track_objs[i].hash == track.hash:
+            del self._track_objs[i]
+        else:
+            for i, t in enumerate(self._track_objs):
+                if t.hash == track.hash:
+                    del self._track_objs[i]
+                    break;
+        commit()
 
 
 def load():
@@ -144,9 +162,17 @@ def tracks():
 
 def clean():
     if not os.path.isdir(DIR):
+        print("%s is not a directory" % DIR)
         return
     if os.path.isfile(LIBRARY):
+        print("loading library file %s" % LIBRARY)
         load()
+
+    # Search the library for tracks which have been deleted or renamed.
+    for track in tracks():
+        if track.source and not os.path.isfile(track.source):
+            print("removing reference to missing file %s" % track.source)
+            track.delete()
 
     # Make a list of the files we expect to find in the library.
     # We'll delete everything we don't recognize.

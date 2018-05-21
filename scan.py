@@ -99,7 +99,7 @@ def scan(source=None):
         basedir = os.getcwd()
         worklist = [source]
 
-    # Update the library track list.
+    # Update the library track list: look for files we haven't seen before.
     if len(worklist):
         random.shuffle(worklist)
         print("Updating track library")
