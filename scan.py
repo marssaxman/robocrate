@@ -1,21 +1,16 @@
 import os, os.path, sys
-from musictoys import audiofile
 from mp3hash import mp3hash
 import eyed3
 import random
 
 import library
-import summary
+#import summary
 import extractor
 import features
 
 
 def _scan_file(source):
-    """Extract representative audio summary segments and generate metadata.
-
-    source: an MP3, WAV, or other music file readable by ffmpeg
-    """
-    # Generate the summary clip, if it doesn't already exist.
+    """Extract metadata from this audio file."""
     info = {
         "source": os.path.abspath(source),
         "hash": mp3hash(source),
@@ -52,7 +47,8 @@ def _scan_file(source):
 def _search(source):
     print "searching for music files in " + source
     worklist = []
-    extensions = tuple(audiofile.extensions())
+    extensions = ('.aac', '.aiff', '.au', '.flac', '.m4a', '.m4r',
+            '.mp2', '.mp3', '.mp4', '.ogg', '.oga', '.wav', '.wma')
     exclude = set([library.DIR])
     for root, dirs, files in os.walk(source):
         dirs[:] = [d for d in dirs if d not in exclude]
