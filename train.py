@@ -3,18 +3,21 @@ import library
 import os.path
 import features
 import argparse
+from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
-from sklearn.feature_selection import SelectFromModel
+from sklearn.model_selection import StratifiedKFold
+from sklearn.feature_selection import SelectKBest, SelectFromModel
+from sklearn.feature_selection import RFE, RFECV
+from sklearn.feature_selection import chi2, mutual_info_classif
+from sklearn.linear_model import MultiTaskLassoCV
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.pipeline import Pipeline
 from sklearn import preprocessing
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import chi2
-from sklearn.feature_selection import RFE
 from sklearn.multiclass import OneVsRestClassifier
-from sklearn.linear_model import MultiTaskLassoCV
 from collections import namedtuple
 import scipy.stats
 
@@ -119,15 +122,64 @@ def randomsearch(model, data, n_iter, param_dist):
     print rscv.cv_results_
 
 
-def train(num_labels=None, gridcv=False, randomcv=False):
+def reduce_kbest(data, feat_names, k=200):
+    print("SelectKBest features with chi2, k=%d" % k)
+    selected_features = []
+    for label in range(data.target.shape[1]):
+        skb = SelectKBest(chi2, k='all')
+        skb.fit(data.input, data.target[:,label])
+        selected_features.append(list(skb.scores_))
+    print "  MaxCS criterion:"
+    # selected_features = np.mean(selected_features, axis=0) > threshold
+    selected_maxcs = np.max(selected_features, axis=0)
+    #selected_meancs = np.max(selected_features, axis=0)
+    for i in np.argsort(selected_maxcs)[::-1][:k]:
+        print("    %s: %.1f" % (feat_names[i], selected_maxcs[i]))
+
+    print "  MeanCS criterion:"
+    selected_meancs = np.max(selected_features, axis=0)
+    for i in np.argsort(selected_meancs)[::-1][:k]:
+        print("    %s: %.1f" % (feat_names[i], selected_meancs[i]))
+
+
+    skb = SelectKBest(chi2, k=k)
+    skb.fit(data.input, data.target)
+    print("feature reduction complete")
+    data = transform_input(skb, data)
+    subset = skb.get_support(indices=True)
+    subset = sorted(subset, key=lambda x: skb.scores_[x], reverse=True)
+    for i in subset:
+        print("    %s: %.1f" % (feat_names[i], skb.scores_[i]))
+    return data, [feat_names[i] for i in subset]
+
+
+def reduce_rfecv(data, feat_names):
+    print("Recursive feature elimination")
+    svc = SVC(kernel="linear", C=1)
+    # The "accuracy" scoring is proportional to the number of correct
+    # classifications
+    rfecv = RFECV(estimator=svc, step=1, cv=StratifiedKFold(2),
+              scoring='accuracy')
+    rfecv.fit(data.input, data.target)
+    print("Optimal number of features : %d" % rfecv.n_features_)
+
+
+def train(num_labels=None, gridcv=False, randomcv=False, kbest=None, rfecv=False):
     # Load the track library. Collect metadata labels. Generate a target
     # matrix. Load features for each track in the target matrix.
     libtracks = library.tracks()
     labels = collect_labels(libtracks, num_labels)
     tracklist, target = generate_target(labels)
-    data = Dataset(features.matrix(tracklist), target)
+    data = Dataset(features.normalize(features.matrix(tracklist)), target)
     feat_names = features.names()
-    train, test = split_dataset(data, test_size=0.4)  # , random_state=0)
+
+    if kbest:
+        reduce_kbest(data, feat_names, kbest)
+
+    if rfecv:
+        reduce_rfecv(data, feat_names)
+
+    train, test = split_dataset(data, test_size=0.4, random_state=0)
     # A random forest should be able to handle the excessive dimensionality
     # of our dataset relative to the number of samples.
     clf = RandomForestClassifier(n_estimators=120, n_jobs=-1, verbose=1)
@@ -191,30 +243,30 @@ def train(num_labels=None, gridcv=False, randomcv=False):
           (len(feature_subset), slim_score * 100.0))
 
 
-# A variety of learning experiments follow
-
-def reduce_kbest(data, feat_names):
-    print("reducing features with SelectKBest/chi2")
-    skb = SelectKBest(chi2, k=200)
-    scaled = Dataset(preprocessing.minmax_scale(data.input), data.target)
-    skb.fit(*scaled)
-    print("feature reduction complete")
-    data = transform_input(skb, data)
-    subset = skb.get_support(indices=True)
-    print("skb.scores_.shape", skb.scores_.shape)
-    print("subset.shape", subset.shape)
-    for i in subset:
-        print("    %.1f: '%s'" % (skb.scores_[i], feat_names[i]))
-    return data, [feat_names[i] for i in subset]
-
-
 def add_arguments(parser):
     parser.add_argument('--num_labels', type=int, default=None)
     parser.add_argument('--gridcv', default=False, action='store_true')
     parser.add_argument('--randomcv', default=False, action='store_true')
+    parser.add_argument('--kbest', default=None, type=int)
+    parser.add_argument('--rfecv', default=False, action='store_true')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     add_arguments(parser)
-    train(**var(parser.parse_args()))
+    train(**vars(parser.parse_args()))
+
+# Questions to be answered:
+# - SelectKBest, RFECV, or SelectFromModel?
+# - With the former two:
+#   + use chi2, f_classif, or mutual_info_classif?
+#   + aggregate score via mean, max, or median?
+# - What effect does random forest n_estimators have on accuracy?
+# - How does the curved normalization algorithm affect accuracy?
+# - Feature selection or... decomposition, PCA or NMF?
+# - How does category size and degree of overlap affect accuracy?
+# - Does single-label classification get better accuracy than multilabel?
+# - Can we trade off banks of features - ERB vs mel vs bark, mfcc vs gfcc?
+# - What are "lasso" and "stability selection"?
+# - How do tag-based categories compare to playlists/crates?
+# - What might be the effect of adding in mfcc/gfcc cov and icov values?

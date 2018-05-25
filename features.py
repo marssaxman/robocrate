@@ -1246,6 +1246,24 @@ def matrix(tracks):
     return np.array(feats)
 
 
+def normalize(matrix):
+    # accepts an array with shape [tracks, features], normalizes, returns it
+    # Scale the limits so that all values fall within 0..1 for each feature.
+    # If the min and max are equal, leave the value set at zero.
+    scaled = matrix.copy()
+    scaled -= scaled.min(axis=0)
+    maxv = scaled.max(axis=0)
+    scaled[:,maxv.nonzero()] /= maxv[maxv.nonzero()]
+    # Compute the linear average, then get the logarithm in that base of the
+    # value 0.5. We will correct for distribution nonlinearity by raising every
+    # scaled value to this power.
+    meanv = scaled.mean(axis=0)
+    powers = np.ones_like(meanv)
+    powers[meanv.nonzero()] = np.log(0.5) / np.log(meanv[meanv.nonzero()])
+    curved = scaled ** powers
+    return curved
+
+
 if __name__ == '__main__':
     print("Saved features array schema:")
     for i, name in enumerate(_feature_names):

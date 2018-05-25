@@ -68,6 +68,41 @@ def mean_stdev_limits_report(feats, *args, **kwargs):
             names[i], ns(minv), ns(maxv), ns(meanv), ns(stdv)))
 
 
+def scaled_mean_stdev_report(feats, *args, **kwargs):
+    print("mean, stdev for each feature after minmax and power scaling")
+    names = features.names()
+    # scale the limits so that all values fall within 0..1 for each feature
+    scaled = feats.copy()
+    scaled -= scaled.min(axis=0)
+    maxv = scaled.max(axis=0)
+    scaled[:,maxv.nonzero()] /= maxv[maxv.nonzero()]
+
+    fig = plt.figure(1, figsize=(scaled.shape[0]/96, scaled.shape[1]/96), dpi=96)
+    plt.matshow(scaled, cmap='gray')
+    plt.gca().axis('off')
+    plt.savefig("scaledfeats.png", dpi=96, bbox_inches='tight')
+
+    # compute the linear average, then get the logarithm in that base of the
+    # value 0.5. We will correct for distribution nonlinearity by raising every
+    # scaled value to this power.
+    meanv = scaled.mean(axis=0)
+    powers = np.ones_like(meanv)
+    powers[meanv.nonzero()] = np.log(0.5) / np.log(meanv[meanv.nonzero()])
+    curved = scaled ** powers
+
+    fig = plt.figure(1, figsize=(scaled.shape[0]/96, scaled.shape[1]/96), dpi=96)
+    plt.matshow(curved, cmap='gray')
+    plt.gca().axis('off')
+    plt.savefig("curvedfeats.png", dpi=96, bbox_inches='tight')
+
+
+    # print out a little report of what we found
+    for i in np.arange(feats.shape[-1]):
+        lmean, lstd = curved[:,i].mean(), curved[:,i].std()
+        print("%s: %s**%s = %s, dev=%s" % (
+                names[i], ns(meanv[i]), ns(powers[i]), ns(lmean), ns(lstd)))
+
+
 def extreme_distributions(feats):
     # which average values are the most extreme? we want the ones closest to
     # zero and the ones closest to 1
@@ -193,6 +228,7 @@ if __name__ == '__main__':
         'normaltest': normaltest_report,
         'tags': tags_report,
         'mean_stdev_limits': mean_stdev_limits_report,
+        'scaled_mean_stdev': scaled_mean_stdev_report,
     }
     parser.add_argument('report', choices=report_list)
     parser.add_argument('--num', type=int, default=10)
