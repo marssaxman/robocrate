@@ -23,7 +23,7 @@ def print_feat(i, feats):
     avg = feats[:,i].mean()
     dev = feats[:,i].std()
     scale = (dev / np.abs(avg)) * 100.0
-    print u"    %s (%s \u00B1 %s, %.2f%%)" % (name, ns(avg), ns(dev), scale)
+    print("    %s (%s . %s, %.2f%%)" % (name, ns(avg), ns(dev), scale))
 
 
 def deviation_report(feats):
@@ -40,32 +40,32 @@ def deviation_report(feats):
     num = 10
 
     ordering = indexes[np.argsort(deviation)]
-    print "top %d most deviant features, absolute scale" % num
+    print("top %d most deviant features, absolute scale" % num)
     for i in ordering[::-1][:num]:
         print_feat(i, feats)
-    print "bottom %d least deviant features, absolute scale" % num
+    print("bottom %d least deviant features, absolute scale" % num)
     for i in ordering[:num]:
         print_feat(i, feats)
 
     scaled_deviation = np.divide(deviation, np.abs(average))
     ordering = indexes[np.argsort(scaled_deviation)]
-    print "top %d most deviant features, relative scale" % num
+    print("top %d most deviant features, relative scale" % num)
     for i in ordering[::-1][:num]:
         print_feat(i, feats)
-    print "bottom %d least deviant features, relative scale" % num
+    print("bottom %d least deviant features, relative scale" % num)
     for i in ordering[:num]:
         print_feat(i, feats)
 
 
 def mean_stdev_limits_report(feats, *args, **kwargs):
-    print "mean, stdev, and limits for each feature"
+    print("mean, stdev, and limits for each feature")
     names = features.names()
     for i in np.arange(feats.shape[-1]):
         feat = feats[:,i]
         minv, maxv = feat.min(), feat.max()
         meanv, stdv = feat.mean(), feat.std()
-        print "%s: (%s .. %s); mean=%s, stdev=%s " % (
-            names[i], ns(minv), ns(maxv), ns(meanv), ns(stdv))
+        print("%s: (%s .. %s); mean=%s, stdev=%s " % (
+            names[i], ns(minv), ns(maxv), ns(meanv), ns(stdv)))
 
 
 def extreme_distributions(feats):
@@ -79,7 +79,7 @@ def extreme_distributions(feats):
     avgoutlier[highavg] = 1.0 - avgoutlier[highavg]
     ordering = np.argsort(avgoutlier)
     ordering = np.compress(actual_avg[ordering] != 0, ordering)
-    print "top 20 most extreme distributions"
+    print("top 20 most extreme distributions")
     for i in ordering[:20]:
         print_feat(i, feats)
 
@@ -102,16 +102,16 @@ def correlation_report(feats, num=20):
     ordering = np.compress(np.isfinite(flatR[ordering]), ordering)
     names = features.names()
 
-    print "top %d most highly correlated variables" % num
+    print("top %d most highly correlated variables" % num)
     for flat in ordering[::-1][:num]:
         pair = np.unravel_index(flat, R.shape)
         coeff = R[pair]
-        print u"    %s \u224D %s: %s" % (names[pair[0]], names[pair[1]], ns(coeff))
+        print("    %s . %s: %s" % (names[pair[0]], names[pair[1]], ns(coeff)))
     print "bottom %d least highly correlated variables" % num
     for flat in ordering[:num]:
         pair = np.unravel_index(flat, R.shape)
         coeff = R[pair]
-        print u"    %s \u226D %s: %s" % (names[pair[0]], names[pair[1]], ns(coeff))
+        print("    %s . %s: %s" % (names[pair[0]], names[pair[1]], ns(coeff)))
 
 
 def kurtosis_report(feats, num=20):
@@ -128,13 +128,13 @@ def kurtosis_report(feats, num=20):
 
     kurt = (1. / feats.shape[-1]) * np.sum(diffmean ** 4) / (var ** 2) - 3.0
     ordering = np.argsort(kurt)
-    print "top %d most gaussian features" % num
+    print("top %d most gaussian features" % num)
     names = features.names()
     for i in ordering[::-1][:num]:
-        print "    %s (%s)" % (names[indexes[i]], ns(kurt[i]))
-    print "bottom %d least gaussian features" % num
+        print("    %s (%s)" % (names[indexes[i]], ns(kurt[i])))
+    print("bottom %d least gaussian features" % num)
     for i in ordering[:num]:
-        print "    %s (%s)" % (names[indexes[i]], ns(kurt[i]))
+        print("    %s (%s)" % (names[indexes[i]], ns(kurt[i])))
 
 
 
@@ -147,7 +147,7 @@ def normaltest_report(feats, num=20):
         s, p = scipy.stats.normaltest(feats[:,i])
         statistic[i] = s
         pvalue[i] = p
-        print "    %s s=%s, p=%s" % (features.names()[i], ns(s), ns(p))
+        print("    %s s=%s, p=%s" % (features.names()[i], ns(s), ns(p)))
 
 
 def tags_report(feats, num=15):
