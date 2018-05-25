@@ -107,7 +107,7 @@ def correlation_report(feats, num=20):
         pair = np.unravel_index(flat, R.shape)
         coeff = R[pair]
         print("    %s . %s: %s" % (names[pair[0]], names[pair[1]], ns(coeff)))
-    print "bottom %d least highly correlated variables" % num
+    print("bottom %d least highly correlated variables" % num)
     for flat in ordering[:num]:
         pair = np.unravel_index(flat, R.shape)
         coeff = R[pair]
