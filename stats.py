@@ -77,11 +77,6 @@ def scaled_mean_stdev_report(feats, *args, **kwargs):
     maxv = scaled.max(axis=0)
     scaled[:,maxv.nonzero()] /= maxv[maxv.nonzero()]
 
-    fig = plt.figure(1, figsize=(scaled.shape[0]/96, scaled.shape[1]/96), dpi=96)
-    plt.matshow(scaled, cmap='gray')
-    plt.gca().axis('off')
-    plt.savefig("scaledfeats.png", dpi=96, bbox_inches='tight')
-
     # compute the linear average, then get the logarithm in that base of the
     # value 0.5. We will correct for distribution nonlinearity by raising every
     # scaled value to this power.
@@ -90,17 +85,48 @@ def scaled_mean_stdev_report(feats, *args, **kwargs):
     powers[meanv.nonzero()] = np.log(0.5) / np.log(meanv[meanv.nonzero()])
     curved = scaled ** powers
 
-    fig = plt.figure(1, figsize=(scaled.shape[0]/96, scaled.shape[1]/96), dpi=96)
-    plt.matshow(curved, cmap='gray')
-    plt.gca().axis('off')
-    plt.savefig("curvedfeats.png", dpi=96, bbox_inches='tight')
-
-
     # print out a little report of what we found
     for i in np.arange(feats.shape[-1]):
         lmean, lstd = curved[:,i].mean(), curved[:,i].std()
         print("%s: %s**%s = %s, dev=%s" % (
                 names[i], ns(meanv[i]), ns(powers[i]), ns(lmean), ns(lstd)))
+
+    # Plot the scaled and curved feature matrices.
+    figsize = (feats.shape[0]/96, 2*feats.shape[1]/96)
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+    axes[0].matshow(scaled, cmap='gray')
+    axes[0].axis('off')
+    axes[0].set_aspect(1.0)
+    axes[1].matshow(curved, cmap='gray')
+    axes[1].axis('off')
+    axes[1].set_aspect(1.0)
+    plt.savefig("scaled_featmatrix.png", dpi=96, bbox_inches='tight')
+
+    # Plot histograms of the scaled and curved features.
+    hist_bins = 16
+    figsize = (4, feats.shape[1]/96)
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+    histogram = np.zeros((feats.shape[1], hist_bins), dtype=np.float)
+    for i in np.arange(feats.shape[1]):
+        hist, edges = np.histogram(scaled[:,i], bins=hist_bins, range=(0,1),
+                density=True)
+        histogram[i] = hist / hist.max()
+    histogram = np.repeat(histogram, 128/hist_bins, axis=1)
+    histogram = np.pad(histogram, (8,8), 'constant', constant_values=(0.5,0.5))
+    axes[0].matshow(histogram, cmap='gray')
+    axes[0].axis('off')
+    axes[0].set_aspect(1.0)
+    histogram = np.zeros((feats.shape[1], hist_bins), dtype=np.float)
+    for i in np.arange(feats.shape[1]):
+        hist, edges = np.histogram(curved[:,i], bins=hist_bins, range=(0,1),
+                density=True)
+        histogram[i] = hist / hist.max()
+    histogram = np.repeat(histogram, 128/hist_bins, axis=1)
+    histogram = np.pad(histogram, (8,8), 'constant', constant_values=(0.5,0.5))
+    axes[1].matshow(histogram, cmap='gray')
+    axes[1].axis('off')
+    axes[1].set_aspect(1.0)
+    plt.savefig("scaled_featdist.png", dpi=96, bbox_inches='tight')
 
 
 def extreme_distributions(feats):
